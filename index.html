@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ئیمزاکردنی فاتورە</title>
+    <style>
+        body { margin: 0; text-align: center; background: #333; color: white; }
+        canvas { border: 1px solid white; background: white; max-width: 100%; height: auto; touch-action: none; }
+        .btns { padding: 20px; position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); }
+        button { padding: 15px 30px; font-size: 18px; margin: 5px; border-radius: 8px; border: none; }
+        .send { background: #28a745; color: white; }
+        .clear { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+
+    <h3>تکایە لە هەر شوێنێک دەخوازیت ئیمزا بکە</h3>
+    <canvas id="canvas"></canvas>
+
+    <div class="btns">
+        <button class="clear" onclick="clearCanvas()">سڕینەوە</button>
+        <button class="send" onclick="save()">ناردنی ئیمزا</button>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "لینکەکەی_خۆت_لێرە_دابنێ"; // لێنکی Web App لێرە دابنێ
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const urlParams = new URLSearchParams(window.location.search);
+        const invNum = urlParams.get('num');
+        const imgUrl = decodeURIComponent(urlParams.get('img'));
+
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = imgUrl;
+
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            initDrawing();
+        };
+
+        let drawing = false;
+        function initDrawing() {
+            const start = (e) => { drawing = true; draw(e); };
+            const end = () => { drawing = false; ctx.beginPath(); };
+            const draw = (e) => {
+                if(!drawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * (canvas.width / rect.width);
+                const y = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * (canvas.height / rect.height);
+                ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.strokeStyle = "blue";
+                ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+            };
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', draw); window.addEventListener('mouseup', end);
+            canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', draw); canvas.addEventListener('touchend', end);
+        }
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); }
+
+        async function save() {
+            const merged = canvas.toDataURL("image/jpeg", 0.7);
+            alert("خەریکی ناردنە...");
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: merged, invoiceNum: invNum })
+            });
+            alert("فاتورەکە بە سەرکەوتوویی نێردرا!");
+        }
+    </script>
+</body>
+</html>
