@@ -2,20 +2,22 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>بەڕێوبەر - ئەپلۆدی فاتورە</title>
+    <title>بەڕێوبەر - ناردنی فاتورە</title>
     <style>
-        body { font-family: Arial; background: #f4f7f6; text-align: center; padding: 50px; }
-        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-block; width: 350px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
-        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        body { font-family: Arial, sans-serif; background: #f4f7f6; text-align: center; padding: 50px; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 350px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #1557b0; }
         #qrcode { margin-top: 20px; display: none; }
+        #status { margin-top: 15px; font-size: 14px; color: #555; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>ناردنی فاتورە</h2>
-    <input type="text" id="invNum" placeholder="ژمارەی فاتورە">
+    <h2>ناردنی فاتورەی نوێ</h2>
+    <input type="text" id="invNum" placeholder="ژمارەی فاتورە بنووسە">
     <input type="file" id="invFile" accept="image/*">
     <button onclick="upload()">ئەپلۆد و دروستکردنی QR</button>
     <div id="status"></div>
@@ -24,7 +26,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1iL2RCenvcQAkS-Xq61VeyBXD9sPNuLqMNpuURYrFV917dBmaHUoypLpfHsDmc-4/exec";
+    // لێنکە نوێیەکەی Apps Script
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDJMzqQpFUfySinY7I0YfluVezsKlbwmz-TawtA7e1ZfdLswv8Qjsop_NEdFh6yvs/exec";
 
     async function upload() {
         const file = document.getElementById('invFile').files[0];
@@ -33,23 +36,38 @@
 
         if(!file || !num) return alert("تکایە هەموو خانەکان پڕ بکەرەوە");
 
-        status.innerText = "خەریکی ئەپلۆدکردنە...";
+        status.innerText = "خەریکی ئەپلۆدکردنە، چاوەڕێ بکە...";
         const reader = new FileReader();
+        
         reader.onload = async function(e) {
             const base64 = e.target.result;
-            const res = await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify({ type: "UPLOAD_INVOICE", image: base64, invoiceNum: num })
-            });
-            const data = await res.json();
             
-            // دروستکردنی لێنک بۆ کڕیار
-            // لێنکی GitHub Pages ەکەت لێرە دابنێ
-            const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${num}&img=${encodeURIComponent(data.fileUrl)}`;
-            
-            new QRious({ element: document.getElementById('qrcode'), value: clientUrl, size: 200 });
-            document.getElementById('qrcode').style.display = "inline-block";
-            status.innerText = "سەرکەوتوو بوو! QR سکان بکە.";
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ 
+                        type: "UPLOAD_INVOICE", 
+                        image: base64, 
+                        invoiceNum: num 
+                    })
+                });
+                
+                const data = await res.json();
+                
+                // دروستکردنی لێنکی پەیجی ئیمزا بۆ کڕیار
+                const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${num}&img=${encodeURIComponent(data.fileUrl)}`;
+                
+                new QRious({ 
+                    element: document.getElementById('qrcode'), 
+                    value: clientUrl, 
+                    size: 250 
+                });
+                
+                document.getElementById('qrcode').style.display = "inline-block";
+                status.innerText = "سەرکەوتوو بوو! کۆدەکە بدە بە کڕیار.";
+            } catch (err) {
+                status.innerText = "هەڵەیەک ڕوویدا لە کاتی ئەپلۆدکردن.";
+            }
         };
         reader.readAsDataURL(file);
     }
