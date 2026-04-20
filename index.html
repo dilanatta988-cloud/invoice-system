@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ئیمزاکردنی فاتورە</title>
     <style>
-        body { margin: 0; text-align: center; background: #333; color: white; }
-        canvas { border: 1px solid white; background: white; max-width: 100%; height: auto; touch-action: none; }
-        .btns { padding: 20px; position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); }
-        button { padding: 15px 30px; font-size: 18px; margin: 5px; border-radius: 8px; border: none; }
+        body { margin: 0; text-align: center; background: #222; color: white; font-family: Arial; overflow: hidden; }
+        canvas { border: 1px solid #444; background: white; max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+        .btns { padding: 15px; position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; box-sizing: border-box; }
+        button { padding: 12px 25px; font-size: 16px; margin: 0 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
         .send { background: #28a745; color: white; }
         .clear { background: #dc3545; color: white; }
+        h3 { margin: 10px 0; font-size: 18px; }
     </style>
 </head>
 <body>
@@ -23,13 +25,14 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1iL2RCenvcQAkS-Xq61VeyBXD9sPNuLqMNpuURYrFV917dBmaHUoypLpfHsDmc-4/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDJMzqQpFUfySinY7I0YfluVezsKlbwmz-TawtA7e1ZfdLswv8Qjsop_NEdFh6yvs/exec";
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const urlParams = new URLSearchParams(window.location.search);
         const invNum = urlParams.get('num');
         const imgUrl = decodeURIComponent(urlParams.get('img'));
 
+        // بارکردنی وێنەی فاتورەکە وەک باکگراوند
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = imgUrl;
@@ -43,30 +46,53 @@
 
         let drawing = false;
         function initDrawing() {
-            const start = (e) => { drawing = true; draw(e); };
-            const end = () => { drawing = false; ctx.beginPath(); };
-            const draw = (e) => {
-                if(!drawing) return;
+            const getPos = (e) => {
                 const rect = canvas.getBoundingClientRect();
-                const x = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * (canvas.width / rect.width);
-                const y = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * (canvas.height / rect.height);
-                ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.strokeStyle = "blue";
-                ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+                const sx = canvas.width / rect.width;
+                const sy = canvas.height / rect.height;
+                return {
+                    x: ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * sx,
+                    y: ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * sy
+                };
             };
-            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', draw); window.addEventListener('mouseup', end);
-            canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', draw); canvas.addEventListener('touchend', end);
+            
+            const start = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
+            const move = (e) => { 
+                if(!drawing) return; 
+                e.preventDefault(); 
+                const p = getPos(e); 
+                ctx.lineTo(p.x, p.y); 
+                ctx.lineWidth = 6; 
+                ctx.strokeStyle = "blue"; 
+                ctx.lineCap = "round"; 
+                ctx.stroke(); 
+            };
+            const stop = () => { drawing = false; };
+
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
+            canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); canvas.addEventListener('touchend', stop);
         }
 
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); }
 
         async function save() {
-            const merged = canvas.toDataURL("image/jpeg", 0.7);
-            alert("خەریکی ناردنە...");
-            await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: merged, invoiceNum: invNum })
-            });
-            alert("فاتورەکە بە سەرکەوتوویی نێردرا!");
+            const merged = canvas.toDataURL("image/jpeg", 0.8);
+            alert("خەریکی ناردنە، تکایە چاوەڕێ بکە...");
+            
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ 
+                        type: "SAVE_FINAL", 
+                        mergedImage: merged, 
+                        invoiceNum: invNum 
+                    })
+                });
+                alert("فاتورەکە بە سەرکەوتوویی ئیمزا کرا و نێردرا!");
+                window.close();
+            } catch (err) {
+                alert("هەڵەیەک لە ناردن ڕوویدا.");
+            }
         }
     </script>
 </body>
