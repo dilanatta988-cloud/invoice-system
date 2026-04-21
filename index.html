@@ -3,81 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-    <title>ئیمزاکردنی فاتورە</title>
+    <title>ئیمزا</title>
     <style>
-        body { font-family: Arial; background: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #container { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); text-align: center; }
-        .canvas-container { position: relative; width: 100%; border: 1px solid #ddd; background: #eee; margin-bottom: 15px; border-radius: 8px; overflow: hidden; }
-        #invoice-img { width: 100%; display: block; pointer-events: none; }
+        body { font-family: Arial; background: #333; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #box { background: white; width: 95%; max-width: 450px; padding: 15px; border-radius: 15px; text-align: center; }
+        .canvas-area { position: relative; width: 100%; border: 1px solid #ccc; background: #fafafa; margin-bottom: 10px; }
+        #invoice-img { width: 100%; display: block; }
         #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; z-index: 5; }
         .btns { display: flex; gap: 10px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; }
-        .save { background: #28a745; }
-        .clear { background: #ff7675; }
+        button { flex: 1; padding: 12px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
-
-<div id="container">
-    <h2 style="margin-bottom: 15px;">Sign Invoice</h2>
-    <div class="canvas-container">
-        <img id="invoice-img">
-        <canvas id="signature-pad"></canvas>
+    <div id="box">
+        <h3>Sign Invoice</h3>
+        <div class="canvas-area">
+            <img id="invoice-img">
+            <canvas id="signature-pad"></canvas>
+        </div>
+        <div class="btns">
+            <button style="background:#28a745" onclick="save()">Save</button>
+            <button style="background:#dc3545" onclick="clearPad()">Clear</button>
+        </div>
     </div>
-    <div class="btns">
-        <button class="save" onclick="save()">Save</button>
-        <button class="clear" onclick="clearPad()">Clear</button>
-    </div>
-    <p style="margin-top: 10px; color: #777;">Created by Dilan</p>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
-<script>
-    const canvas = document.getElementById('signature-pad');
-    const invoiceImg = document.getElementById('invoice-img');
-    const signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
+    <script>
+        const canvas = document.getElementById('signature-pad');
+        const img = document.getElementById('invoice-img');
+        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
+        const urlParams = new URLSearchParams(window.location.search);
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzH10QLmYJjgQYnM86tyljBfKFUBjQhEHSBUaPYFazyXBCkS0rRrC4p71DHc_oQFQ/exec";
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const imgData = urlParams.get('img');
-    const invNum = urlParams.get('num');
+        if (urlParams.get('img')) {
+            // بەکارهێنانی سێرڤەری ناوبژیوان (Proxy) بۆ نیشاندان لە ئایفۆن
+            img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
+            img.onload = () => {
+                canvas.width = img.clientWidth;
+                canvas.height = img.clientHeight;
+            };
+        }
 
-    if (imgData) {
-        invoiceImg.src = decodeURIComponent(imgData);
-        invoiceImg.onload = function() {
-            canvas.width = invoiceImg.clientWidth;
-            canvas.height = invoiceImg.clientHeight;
-            signaturePad.clear();
-        };
-    }
+        async function save() {
+            if (pad.isEmpty()) return alert("تکایە ئیمزا بکە");
+            
+            const temp = document.createElement('canvas');
+            const ctx = temp.getContext('2d');
+            temp.width = img.naturalWidth;
+            temp.height = img.naturalHeight;
 
-    async function save() {
-        if (signaturePad.isEmpty()) return alert("تکایە ئیمزا بکە");
+            ctx.fillStyle = "white"; // ڕێگری لە ڕەشبوونی وێنە
+            ctx.fillRect(0, 0, temp.width, temp.height);
+            ctx.drawImage(img, 0, 0);
+            ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, temp.width, temp.height);
 
-        const tempCanvas = document.createElement('canvas');
-        const ctx = tempCanvas.getContext('2d');
-        tempCanvas.width = invoiceImg.naturalWidth;
-        tempCanvas.height = invoiceImg.naturalHeight;
+            alert("خەریکی ناردنە...");
+            fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: temp.toDataURL("image/jpeg", 0.5), invoiceNum: urlParams.get('num') })
+            }).then(() => alert("سەرکەوتوو بوو!")).catch(() => alert("هەڵە لە ناردن"));
+        }
 
-        // کێشانی پاشبنەمای سپی بۆ ئەوەی وێنەکە ڕەش نەبێت
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-        ctx.drawImage(invoiceImg, 0, 0);
-        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
-
-        const finalImg = tempCanvas.toDataURL("image/jpeg", 0.7);
-        alert("خەریکی ناردنە...");
-        
-        fetch("https://script.google.com/macros/s/AKfycbzH10QLmYJjgQYnM86tyljBfKFUBjQhEHSBUaPYFazyXBCkS0rRrC4p71DHc_oQFQ/exec", {
-            method: "POST",
-            mode: 'no-cors',
-            body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: finalImg, invoiceNum: invNum })
-        }).then(() => {
-            alert("سەرکەوتوو بوو!");
-            signaturePad.clear();
-        }).catch(() => alert("هەڵە لە ناردن"));
-    }
-
-    function clearPad() { signaturePad.clear(); }
-</script>
+        function clearPad() { pad.clear(); }
+    </script>
 </body>
 </html>
