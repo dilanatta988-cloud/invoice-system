@@ -6,42 +6,25 @@
     <title>ئیمزاکردنی فاتورە</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            height: 100vh; display: flex; justify-content: center; align-items: center;
-            font-family: 'Arial', sans-serif; background: #222; color: white; overflow: hidden;
-        }
-        #signature-pad-container {
-            background-color: #f9f9f9; border-radius: 12px; padding: 15px;
-            width: 95%; max-width: 500px; height: 90vh; display: flex; flex-direction: column;
-        }
-        h2 { color: #333; text-align: center; margin-bottom: 10px; font-size: 1.2rem; }
-        .canvas-wrapper {
-            position: relative; width: 100%; flex-grow: 1; border: 1px solid #ccc;
-            background-color: white; overflow: hidden;
-        }
+        body { height: 100vh; display: flex; justify-content: center; align-items: center; font-family: Arial; background: #333; overflow: hidden; }
+        #container { background: white; padding: 15px; width: 95%; max-width: 500px; height: 90vh; border-radius: 12px; display: flex; flex-direction: column; }
+        .canvas-wrapper { position: relative; flex-grow: 1; border: 1px solid #ccc; background: #fff; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
         #invoice-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 5; }
-        .button-container { display: flex; justify-content: space-between; margin-top: 10px; }
-        button {
-            width: 48%; padding: 12px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;
-        }
-        .save-btn { background-color: #28a745; color: white; }
-        .clear-btn { background-color: #dc3545; color: white; }
-        #loader { color: #333; text-align: center; margin-top: 50%; font-weight: bold; }
+        .btns { display: flex; justify-content: space-between; margin-top: 10px; }
+        button { width: 48%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
-
-    <div id="signature-pad-container">
-        <h2 id="title">تکایە لێرە ئیمزا بکە</h2>
+    <div id="container">
+        <h3 style="text-align:center; margin-bottom:10px;">تکایە ئیمزا بکە</h3>
         <div class="canvas-wrapper">
-            <div id="loader">خەریکی بارکردنی فاتورەیە...</div>
-            <img id="invoice-img" style="display:none;">
+            <img id="invoice-img">
             <canvas id="signature-pad"></canvas>
         </div>
-        <div class="button-container">
-            <button class="save-btn" onclick="saveSignature()">ناردنی ئیمزا</button>
-            <button class="clear-btn" onclick="clearSignature()">سڕینەوە</button>
+        <div class="btns">
+            <button style="background:#28a745;" onclick="save()">ناردنی ئیمزا</button>
+            <button style="background:#dc3545;" onclick="clearPad()">سڕینەوە</button>
         </div>
     </div>
 
@@ -49,79 +32,49 @@
     <script>
         const canvas = document.getElementById('signature-pad');
         const invoiceImg = document.getElementById('invoice-img');
-        const loader = document.getElementById('loader');
         const signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
 
         const urlParams = new URLSearchParams(window.location.search);
-        const imgUrl = urlParams.get('img');
+        const imgData = urlParams.get('img');
         const invNum = urlParams.get('num');
 
-        if (imgUrl) {
-            const proxyUrl = decodeURIComponent(imgUrl);
-            
-            // دروستکردنی وێنە بە شێوەیەک کە ڕێگری لێنەکرێت
-            const imgLoader = new Image();
-            imgLoader.crossOrigin = "anonymous"; 
-            imgLoader.src = proxyUrl;
-
-            imgLoader.onload = function() {
-                invoiceImg.src = imgLoader.src;
-                invoiceImg.style.display = "block";
-                loader.style.display = "none";
-                resizeCanvas();
-            };
-
-            imgLoader.onerror = function() {
-                loader.innerText = "هەڵە: وێنەکە بار نەکرا. دڵنیابە لە مۆڵەتی درایڤ.";
-            };
+        if (imgData) {
+            invoiceImg.src = decodeURIComponent(imgData);
+            invoiceImg.onload = () => resize();
         }
 
-        function resizeCanvas() {
+        function resize() {
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad.clear();
         }
 
-        window.addEventListener("resize", resizeCanvas);
-
-        async function saveSignature() {
-            if (signaturePad.isEmpty()) {
-                alert("تکایە ئیمزا بکە.");
-                return;
-            }
+        function save() {
+            if (signaturePad.isEmpty()) return alert("تکایە ئیمزا بکە");
 
             const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
+            const ctx = tempCanvas.getContext('2d');
             tempCanvas.width = invoiceImg.naturalWidth;
             tempCanvas.height = invoiceImg.naturalHeight;
 
-            // کێشانی پاشبنەمای سپی و فاتورەکە و ئیمزاکە
-            tempCtx.fillStyle = "white";
-            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-            tempCtx.drawImage(invoiceImg, 0, 0, tempCanvas.width, tempCanvas.height);
-            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            // گرنگ: کێشانی پاشبنەمای سپی بۆ ئەوەی ڕەش دەرنەچێت
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            ctx.drawImage(invoiceImg, 0, 0);
+            ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
 
-            const mergedDataURL = tempCanvas.toDataURL("image/jpeg", 0.7);
-
-            alert("خەریکی ناردنە...");
+            const finalImg = tempCanvas.toDataURL("image/jpeg", 0.6);
             
-            // لێنکی Apps Script ەکەی خۆت لێرە دابنێ
+            alert("خەریکی ناردنە...");
             fetch("https://script.google.com/macros/s/AKfycbyWW3AbZjTSrMIglLDyodcMfHSbL8iJqkzU9csJzsX9Ys0albjGx4mPYuOD2gD-rS8/exec", {
                 method: "POST",
-                body: JSON.stringify({ 
-                    type: "SAVE_FINAL",
-                    mergedImage: mergedDataURL, 
-                    invoiceNum: invNum 
-                })
-            }).then(() => {
-                alert("سەرکەوتوو بوو!");
-                signaturePad.clear();
-            }).catch(err => alert("هەڵە لە ناردن"));
+                body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: finalImg, invoiceNum: invNum })
+            }).then(() => alert("سەرکەوتوو بوو!")).catch(() => alert("هەڵە ڕوویدا"));
         }
 
-        function clearSignature() { signaturePad.clear(); }
+        function clearPad() { signaturePad.clear(); }
+        window.onresize = resize;
     </script>
 </body>
 </html>
