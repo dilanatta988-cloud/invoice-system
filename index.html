@@ -6,9 +6,9 @@
     <title>ئیمزاکردنی فاتورە</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { height: 100vh; display: flex; justify-content: center; align-items: center; font-family: Arial; background: #333; overflow: hidden; }
+        body { height: 100vh; display: flex; justify-content: center; align-items: center; font-family: Arial; background: #333; }
         #container { background: white; padding: 15px; width: 95%; max-width: 500px; height: 90vh; border-radius: 12px; display: flex; flex-direction: column; }
-        .canvas-wrapper { position: relative; flex-grow: 1; border: 1px solid #ccc; background: #fff; }
+        .canvas-wrapper { position: relative; flex-grow: 1; border: 1px solid #ccc; background: #fff; overflow: hidden; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
         #invoice-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 5; }
         .btns { display: flex; justify-content: space-between; margin-top: 10px; }
@@ -50,7 +50,7 @@
             canvas.getContext("2d").scale(ratio, ratio);
         }
 
-        function save() {
+        async function save() {
             if (signaturePad.isEmpty()) return alert("تکایە ئیمزا بکە");
 
             const tempCanvas = document.createElement('canvas');
@@ -58,7 +58,7 @@
             tempCanvas.width = invoiceImg.naturalWidth;
             tempCanvas.height = invoiceImg.naturalHeight;
 
-            // گرنگ: کێشانی پاشبنەمای سپی بۆ ئەوەی ڕەش دەرنەچێت
+            // کێشانی پاشبنەمای سپی (بۆ ڕێگری لە ڕەشبوونی وێنە)
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
             ctx.drawImage(invoiceImg, 0, 0);
