@@ -25,7 +25,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzH10QLmYJjgQYnM86tyljBfKFUBjQhEHSBUaPYFazyXBCkS0rRrC4p71DHc_oQFQ/exec";
+    // لێنکی Apps Script ەکەی خۆت لێرە دابنێ
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNWxYiuNHHw9U3omUX367anrLV2BiXsSS4zu2lmTlj0uFxegasC17C5XylGYXvP8U/exec";
 
     async function upload() {
         const fileInput = document.getElementById('invFile');
@@ -33,7 +34,7 @@
         const status = document.getElementById('status');
         const btn = document.getElementById('uploadBtn');
 
-        if(!fileInput.files[0] || !numInput.value) return alert("تکایە خانەکان پڕ بکەرەوە");
+        if(!fileInput.files[0] || !numInput.value) return alert("تکایە هەموو خانەکان پڕ بکەرەوە");
 
         btn.disabled = true; status.innerText = "خەریکی ئەپلۆدکردنە...";
 
@@ -41,19 +42,20 @@
         reader.onload = async function(e) {
             const base64 = e.target.result;
             try {
-                await fetch(SCRIPT_URL, {
+                await fetch("https://script.google.com/macros/s/AKfycbzH10QLmYJjgQYnM86tyljBfKFUBjQhEHSBUaPYFazyXBCkS0rRrC4p71DHc_oQFQ/exec", {
                     method: "POST",
                     body: JSON.stringify({ type: "UPLOAD_INVOICE", image: base64, invoiceNum: numInput.value })
                 });
 
-                // لێنکی کڕیار بە وێنەی Base64
                 const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${numInput.value}&img=${encodeURIComponent(base64)}`;
                 
                 new QRious({ element: document.getElementById('qrcode'), value: clientUrl, size: 280 });
                 document.getElementById('qrcode').style.display = "inline-block";
                 status.innerText = "سەرکەوتوو بوو! کۆدەکە بدە بە کڕیار.";
+                btn.disabled = false;
+                btn.innerText = "ئەپلۆد و دروستکردنی QR";
             } catch (err) {
-                status.innerText = "هەڵەیەک ڕوویدا.";
+                status.innerText = "هەڵەیەک ڕوویدا لە کاتی ناردن.";
                 btn.disabled = false;
             }
         };
