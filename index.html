@@ -52,17 +52,23 @@
         const invoiceImg = document.getElementById('invoice-img');
         const signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
 
-        // وەرگرتنی زانیارییەکان لە لێنکەکەوە (URL)
         const urlParams = new URLSearchParams(window.location.search);
         const imgUrl = urlParams.get('img');
         const invNum = urlParams.get('num');
 
         if (imgUrl) {
-            // چارەسەری کێشەی نیشان نەدانی وێنە (CORS)
-            invoiceImg.crossOrigin = "anonymous";
-            invoiceImg.src = decodeURIComponent(imgUrl);
-            invoiceImg.onload = () => resizeCanvas();
-            invoiceImg.onerror = () => alert("ناتوانرێت وێنەی فاتورەکە بار بکرێت. دڵنیابە لە مۆڵەتی وێنەکە لە درایڤ.");
+            const img = new Image();
+            img.crossOrigin = "anonymous"; // چارەسەری نیشان نەدانی وێنە
+            img.src = decodeURIComponent(imgUrl);
+
+            img.onload = function() {
+                invoiceImg.src = img.src;
+                resizeCanvas();
+            };
+
+            img.onerror = function() {
+                alert("ناتوانرێت وێنەی فاتورەکە بار بکرێت. دڵنیابە لە مۆڵەتی وێنەکە لە درایف.");
+            };
         }
 
         function resizeCanvas() {
@@ -81,24 +87,28 @@
                 return;
             }
 
-            // دروستکردنی کانڤاسێکی کاتی بۆ تێکەڵکردنی وێنەکان
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             
-            // قەبارەی کانڤاسەکە وەک قەبارەی ڕاستەقینەی فاتورەکە بێت
+            // قەبارەی وێنە ئەسڵییەکە بەکاربهێنە
             tempCanvas.width = invoiceImg.naturalWidth;
             tempCanvas.height = invoiceImg.naturalHeight;
 
-            // ١. کێشانی فاتورە وەک باکگراوەند
+            // ١. کێشانی پاشبنەمای سپی بۆ ئەوەی ڕەش دەرنەچێت
+            tempCtx.fillStyle = "white";
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // ٢. کێشانی فاتورەکە
             tempCtx.drawImage(invoiceImg, 0, 0, tempCanvas.width, tempCanvas.height);
-            
-            // ٢. کێشانی ئیمزاکە لەسەر فاتورەکە
+
+            // ٣. کێشانی ئیمزاکە (لەگەڵ ڕێککردنی قەبارەکەی بۆ سەر فاتورەکە)
             tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
 
-            const mergedDataURL = tempCanvas.toDataURL("image/jpeg", 0.8);
+            const mergedDataURL = tempCanvas.toDataURL("image/jpeg", 0.7);
 
-            alert("خەریکی ناردنە، تکایە چاوەڕێ بکە...");
+            alert("خەریکی ناردنە...");
             
+            // لێنکی Apps Scriptـەکەی خۆت لێرە دابنێ
             fetch("https://script.google.com/macros/s/AKfycbyWW3AbZjTSrMIglLDyodcMfHSbL8iJqkzU9csJzsX9Ys0albjGx4mPYuOD2gD-rS8/exec", {
                 method: "POST",
                 body: JSON.stringify({ 
@@ -109,10 +119,7 @@
             }).then(() => {
                 alert("فاتورەکە بە سەرکەوتوویی ئیمزا کرا و نێردرا!");
                 signaturePad.clear();
-            }).catch(err => {
-                console.error(err);
-                alert("هەڵەیەک ڕوویدا لە ناردنی ئیمزاکە.");
-            });
+            }).catch(err => alert("هەڵەیەک ڕوویدا لە ناردن"));
         }
 
         function clearSignature() { signaturePad.clear(); }
