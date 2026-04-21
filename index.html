@@ -60,7 +60,7 @@
             alert("خەریکی ناردنە...");
             fetch(SCRIPT_URL, {
                 method: "POST",
-                body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: temp.toDataURL("image/jpeg", 0.3), invoiceNum: urlParams.get('num') })
+                body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: temp.toDataURL("image/jpeg", 0.2), invoiceNum: urlParams.get('num') })
             }).then(() => alert("سەرکەوتوو بوو!")).catch(() => alert("هەڵە لە ناردن"));
         }
 
