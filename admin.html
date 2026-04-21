@@ -2,74 +2,91 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>بەڕێوبەر - ناردنی فاتورە</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f7f6; text-align: center; padding: 50px; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 350px; }
+        body { font-family: Arial, sans-serif; background: #f4f7f6; text-align: center; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 100%; max-width: 400px; }
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         button:hover { background: #1557b0; }
-        #qrcode { margin-top: 20px; display: none; }
-        #status { margin-top: 15px; font-size: 14px; color: #555; }
+        #qrcode { margin-top: 20px; display: none; background: white; padding: 10px; border-radius: 8px; }
+        #status { margin-top: 15px; font-size: 14px; color: #555; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h2>ناردنی فاتورەی نوێ</h2>
-    <input type="text" id="invNum" placeholder="ژمارەی فاتورە بنووسە">
+    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">وێنەکە هەڵبژێرە و ژمارەی فاتورە بنووسە</p>
+    
+    <input type="number" id="invNum" placeholder="ژمارەی فاتورە (نموونە: 21412)">
     <input type="file" id="invFile" accept="image/*">
-    <button onclick="upload()">ئەپلۆد و دروستکردنی QR</button>
+    <button id="uploadBtn" onclick="upload()">ئەپلۆد و دروستکردنی QR</button>
+    
     <div id="status"></div>
     <canvas id="qrcode"></canvas>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <script>
-    // لێنکە نوێیەکەی Apps Script
+    // لێنکی Apps Script ەکەت
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWW3AbZjTSrMIglLDyodcMfHSbL8iJqkzU9csJzsX9Ys0albjGx4mPYuOD2gD-rS8/exec";
 
     async function upload() {
-        const file = document.getElementById('invFile').files[0];
-        const num = document.getElementById('invNum').value;
+        const fileInput = document.getElementById('invFile');
+        const numInput = document.getElementById('invNum');
         const status = document.getElementById('status');
+        const btn = document.getElementById('uploadBtn');
 
-        if(!file || !num) return alert("تکایە هەموو خانەکان پڕ بکەرەوە");
+        if(!fileInput.files[0] || !numInput.value) {
+            return alert("تکایە وێنەکە هەڵبژێرە و ژمارەی فاتورەکە بنووسە");
+        }
 
-        status.innerText = "خەریکی ئەپلۆدکردنە، چاوەڕێ بکە...";
+        btn.disabled = true;
+        btn.innerText = "چاوەڕێ بکە...";
+        status.innerText = "خەریکی ئەپلۆدکردنی فاتورەیە لە Google Drive...";
+
         const reader = new FileReader();
-        
         reader.onload = async function(e) {
             const base64 = e.target.result;
             
             try {
+                // ناردنی وێنەکە بۆ درایڤ بۆ ئەوەی وەشانە ئەسڵییەکەمان لای خۆمان هەبێت
                 const res = await fetch(SCRIPT_URL, {
                     method: "POST",
                     body: JSON.stringify({ 
                         type: "UPLOAD_INVOICE", 
                         image: base64, 
-                        invoiceNum: num 
+                        invoiceNum: numInput.value 
                     })
                 });
                 
-                const data = await res.json();
+                // دروستکردنی لێنکی کڕیار بە بەکارهێنانی Base64 
+                // ئەمە کێشەی CORS و مۆڵەتی درایڤ لە مۆبایلی کڕیار چارەسەر دەکات
+                const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${numInput.value}&img=${encodeURIComponent(base64)}`;
                 
-                // دروستکردنی لێنکی پەیجی ئیمزا بۆ کڕیار
-                const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${num}&img=${encodeURIComponent(data.fileUrl)}`;
-                
+                // دروستکردنی QR کۆد
                 new QRious({ 
                     element: document.getElementById('qrcode'), 
                     value: clientUrl, 
-                    size: 250 
+                    size: 280 
                 });
                 
                 document.getElementById('qrcode').style.display = "inline-block";
-                status.innerText = "سەرکەوتوو بوو! کۆدەکە بدە بە کڕیار.";
+                status.style.color = "green";
+                status.innerText = "سەرکەوتوو بوو! ئێستا کڕیار دەتوانێت سکانی بکات.";
+                btn.innerText = "تەواو بوو";
+                
             } catch (err) {
-                status.innerText = "هەڵەیەک ڕوویدا لە کاتی ئەپلۆدکردن.";
+                console.error(err);
+                status.style.color = "red";
+                status.innerText = "هەڵەیەک ڕوویدا، دووبارە هەوڵ بدەرەوە.";
+                btn.disabled = false;
+                btn.innerText = "ئەپلۆد و دروستکردنی QR";
             }
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(fileInput.files[0]);
     }
 </script>
 </body>
