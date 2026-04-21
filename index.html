@@ -58,8 +58,11 @@
         const invNum = urlParams.get('num');
 
         if (imgUrl) {
+            // چارەسەری کێشەی نیشان نەدانی وێنە (CORS)
+            invoiceImg.crossOrigin = "anonymous";
             invoiceImg.src = decodeURIComponent(imgUrl);
             invoiceImg.onload = () => resizeCanvas();
+            invoiceImg.onerror = () => alert("ناتوانرێت وێنەی فاتورەکە بار بکرێت. دڵنیابە لە مۆڵەتی وێنەکە لە درایڤ.");
         }
 
         function resizeCanvas() {
@@ -78,20 +81,25 @@
                 return;
             }
 
-            // تێکەڵکردنی وێنەی فاتورە و ئیمزاکە
+            // دروستکردنی کانڤاسێکی کاتی بۆ تێکەڵکردنی وێنەکان
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
+            
+            // قەبارەی کانڤاسەکە وەک قەبارەی ڕاستەقینەی فاتورەکە بێت
             tempCanvas.width = invoiceImg.naturalWidth;
             tempCanvas.height = invoiceImg.naturalHeight;
 
-            tempCtx.drawImage(invoiceImg, 0, 0);
+            // ١. کێشانی فاتورە وەک باکگراوەند
+            tempCtx.drawImage(invoiceImg, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // ٢. کێشانی ئیمزاکە لەسەر فاتورەکە
             tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
 
             const mergedDataURL = tempCanvas.toDataURL("image/jpeg", 0.8);
 
-            alert("خەریکی ناردنە...");
+            alert("خەریکی ناردنە، تکایە چاوەڕێ بکە...");
             
-            fetch("https://script.google.com/macros/s/AKfycbwNWxYiuNHHw9U3omUX367anrLV2BiXsSS4zu2lmTlj0uFxegasC17C5XylGYXvP8U/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbw7AiOqc3eerXWIuWxBQwzBvhIenh3980waY5thZeTwMvmpJkfZ7dDNOmuoNJWIot8/exec", {
                 method: "POST",
                 body: JSON.stringify({ 
                     type: "SAVE_FINAL",
@@ -101,7 +109,10 @@
             }).then(() => {
                 alert("فاتورەکە بە سەرکەوتوویی ئیمزا کرا و نێردرا!");
                 signaturePad.clear();
-            }).catch(err => alert("هەڵەیەک ڕوویدا لە ناردن"));
+            }).catch(err => {
+                console.error(err);
+                alert("هەڵەیەک ڕوویدا لە ناردنی ئیمزاکە.");
+            });
         }
 
         function clearSignature() { signaturePad.clear(); }
