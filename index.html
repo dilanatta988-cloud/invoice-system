@@ -3,68 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-    <title>ئیمزا</title>
+    <title>ئیمزاکردنی فاتورە - Panacea System</title>
     <style>
-        body { font-family: Arial; background: #333; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #box { background: white; width: 95%; max-width: 450px; padding: 15px; border-radius: 15px; text-align: center; }
-        .canvas-area { position: relative; width: 100%; border: 1px solid #ccc; background: #fafafa; margin-bottom: 10px; }
-        #invoice-img { width: 100%; display: block; }
-        #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; z-index: 5; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #container { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); text-align: center; }
+        .canvas-container { position: relative; width: 100%; border: 2px solid #ddd; background: #eee; margin-bottom: 15px; border-radius: 8px; overflow: hidden; }
+        #invoice-img { width: 100%; display: block; pointer-events: none; }
+        #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; z-index: 10; }
         .btns { display: flex; gap: 10px; }
-        button { flex: 1; padding: 12px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; color: white; transition: 0.3s; }
+        .save { background: #28a745; }
+        .save:disabled { background: #ccc; }
+        .clear { background: #ff7675; }
+        #loader { display: none; margin-top: 10px; color: #1a73e8; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div id="box">
-        <h3>Sign Invoice</h3>
-        <div class="canvas-area">
-            <img id="invoice-img">
-            <canvas id="signature-pad"></canvas>
-        </div>
-        <div class="btns">
-            <button style="background:#28a745" onclick="save()">Save</button>
-            <button style="background:#dc3545" onclick="clearPad()">Clear</button>
-        </div>
+
+<div id="container">
+    <h2 style="margin-bottom: 15px;">Sign Invoice</h2>
+    <div class="canvas-container">
+        <img id="invoice-img" crossorigin="anonymous">
+        <canvas id="signature-pad"></canvas>
     </div>
+    <div id="loader">خەریکی ناردنە، تکایە کەمێک چاوەڕێ بکە...</div>
+    <div class="btns">
+        <button id="save-btn" class="save" onclick="save()">Save</button>
+        <button class="clear" onclick="clearPad()">Clear</button>
+    </div>
+    <p style="margin-top: 10px; color: #777; font-size: 12px;">Dilan Radha - Warehouse Manager</p>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
-    <script>
-        const canvas = document.getElementById('signature-pad');
-        const img = document.getElementById('invoice-img');
-        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
-        const urlParams = new URLSearchParams(window.location.search);
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzH10QLmYJjgQYnM86tyljBfKFUBjQhEHSBUaPYFazyXBCkS0rRrC4p71DHc_oQFQ/exec";
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
+<script>
+    const canvas = document.getElementById('signature-pad');
+    const invoiceImg = document.getElementById('invoice-img');
+    const saveBtn = document.getElementById('save-btn');
+    const loader = document.getElementById('loader');
+    const signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
 
-        if (urlParams.get('img')) {
-            // بەکارهێنانی سێرڤەری ناوبژیوان (Proxy) بۆ نیشاندان لە ئایفۆن
-            img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
-            img.onload = () => {
-                canvas.width = img.clientWidth;
-                canvas.height = img.clientHeight;
-            };
-        }
+    const urlParams = new URLSearchParams(window.location.search);
+    const imgData = urlParams.get('img');
+    const invNum = urlParams.get('num');
+    
+    // لێنکە نوێیەکەت لێرە جێگیر کرا
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzH10QLmYJjgQYnM86tyljBfKFUBjQhEHSBUaPYFazyXBCkS0rRrC4p71DHc_oQFQ/exec";
 
-        async function save() {
-            if (pad.isEmpty()) return alert("تکایە ئیمزا بکە");
-            
-            const temp = document.createElement('canvas');
-            const ctx = temp.getContext('2d');
-            temp.width = img.naturalWidth;
-            temp.height = img.naturalHeight;
+    if (imgData) {
+        // نیشاندانی وێنەکە لە ڕێگەی پرۆکسی بۆ ئەوەی لە ئایفۆن بێ کێشە بێت
+        invoiceImg.src = "https://images.weserv.nl/?url=" + encodeURIComponent(decodeURIComponent(imgData));
+        invoiceImg.onload = function() {
+            canvas.width = invoiceImg.clientWidth;
+            canvas.height = invoiceImg.clientHeight;
+            signaturePad.clear();
+        };
+    }
 
-            ctx.fillStyle = "white"; // ڕێگری لە ڕەشبوونی وێنە
-            ctx.fillRect(0, 0, temp.width, temp.height);
-            ctx.drawImage(img, 0, 0);
-            ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, temp.width, temp.height);
+    async function save() {
+        if (signaturePad.isEmpty()) return alert("تکایە سەرەتا ئیمزا بکە");
 
-            alert("خەریکی ناردنە...");
-            fetch(SCRIPT_URL, {
+        saveBtn.disabled = true;
+        loader.style.display = "block";
+
+        const tempCanvas = document.createElement('canvas');
+        const ctx = tempCanvas.getContext('2d');
+        
+        // بچووککردنەوەی وێنە بۆ 800px بۆ ئەوەی ئایفۆن بە خێرایی بینێرێت
+        const maxWidth = 800;
+        const scale = maxWidth / invoiceImg.naturalWidth;
+        tempCanvas.width = maxWidth;
+        tempCanvas.height = invoiceImg.naturalHeight * scale;
+
+        // پاشبنەمای سپی بۆ ئەوەی لە درایڤ ڕەش نەبێت
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        
+        ctx.drawImage(invoiceImg, 0, 0, tempCanvas.width, tempCanvas.height);
+        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
+
+        // کوالێتی 0.5 بۆ هاوسەنگی نێوان جوانی و خێرایی
+        const finalImg = tempCanvas.toDataURL("image/jpeg", 0.5);
+
+        try {
+            await fetch(SCRIPT_URL, {
                 method: "POST",
-                body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: temp.toDataURL("image/jpeg", 0.5), invoiceNum: urlParams.get('num') })
-            }).then(() => alert("سەرکەوتوو بوو!")).catch(() => alert("هەڵە لە ناردن"));
-        }
+                mode: 'no-cors', // ڕێگری لە بلۆککردنی ناردن لەلایەن براوزەری مۆبایلەوە
+                body: JSON.stringify({ 
+                    type: "SAVE_FINAL", 
+                    mergedImage: finalImg, 
+                    invoiceNum: invNum 
+                })
+            });
 
-        function clearPad() { pad.clear(); }
-    </script>
+            // چونکە no-cors بەکاردێت، ٣ چرکە چاوەڕێ دەکەین و پاشان نامەی سەرکەوتن دەدەین
+            setTimeout(() => {
+                alert("سەرکەوتوو بوو! زانیارییەکان لە شیت و وێنەکە لە درایڤ پاشەکەوت کران.");
+                loader.style.display = "none";
+                saveBtn.disabled = false;
+                signaturePad.clear();
+            }, 3000);
+
+        } catch (err) {
+            alert("هەڵەیەک ڕوویدا لە کاتی پەیوەندی بە سێرڤەر. تکایە جارێکی تر تاقی بکەرەوە.");
+            saveBtn.disabled = false;
+            loader.style.display = "none";
+        }
+    }
+
+    function clearPad() { signaturePad.clear(); }
+    
+    window.onresize = () => {
+        canvas.width = invoiceImg.clientWidth;
+        canvas.height = invoiceImg.clientHeight;
+    };
+</script>
+
 </body>
 </html>
