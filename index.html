@@ -15,19 +15,20 @@
             background: #fafafa; 
             margin-bottom: 15px; 
             border-radius: 8px;
-            overflow: visible; 
+            /* گرنگ بۆ زووم */
+            touch-action: auto !important; 
         }
         
-        #invoice-img { width: 100%; display: block; height: auto; }
+        #invoice-img { width: 100%; display: block; height: auto; pointer-events: none; }
         
-        /* گۆڕانکاری سەرەکی لێرەدایە: pinch-zoom ڕێگە بە زووم دەدات بە دوو پەنجە */
         #signature-pad { 
             position: absolute; 
             top: 0; 
             left: 0; 
             width: 100%; 
             height: 100%; 
-            touch-action: pinch-zoom; 
+            /* ڕێگەدان بە زووم و سکڕۆڵ بە شێوەی خۆکار */
+            touch-action: pinch-zoom !important; 
             z-index: 5; 
         }
         
@@ -50,19 +51,15 @@
 <body>
     <div id="box">
         <h3 style="margin-top: 0;">واژۆکردنی فاتورە</h3>
-        
         <div class="canvas-area">
             <img id="invoice-img">
             <canvas id="signature-pad"></canvas>
         </div>
-        
         <div id="loading-overlay">خەریکی ناردنە... تکایە چاوەڕێ بکە</div>
-        
         <div class="btns">
             <button style="background:#28a745" onclick="save()">پاشەکەوتکردن</button>
             <button style="background:#dc3545" onclick="clearPad()">سڕینەوە</button>
         </div>
-
         <div class="footer-info">
             <span class="company-name">شەریکەی دواء الحياة</span>
             <span class="developer-name">لە لایەن ( دیلان ) دروستکراوە</span>
@@ -74,37 +71,47 @@
         const canvas = document.getElementById('signature-pad');
         const img = document.getElementById('invoice-img');
         const loading = document.getElementById('loading-overlay');
-        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
-        const urlParams = new URLSearchParams(window.location.search);
         
+        // ڕێکخستنی سادە بۆ ئیمزا
+        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
+        
+        const urlParams = new URLSearchParams(window.location.search);
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
 
         if (urlParams.get('img')) {
             img.crossOrigin = "anonymous";
             img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
-            
             img.onload = () => {
                 canvas.width = img.clientWidth;
                 canvas.height = img.clientHeight;
             };
-            
-            img.onerror = () => {
-                img.src = urlParams.get('img');
-            };
+            img.onerror = () => { img.src = urlParams.get('img'); };
         }
+
+        // --- چارەسەری سیحری بۆ زووم ---
+        // ئەم بەشە دەڵێت: ئەگەر پەنجەکان لە یەکدانە زیاتر بوون، کارەکانی ئیمزا بوەستێنە
+        canvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                pad.off(); // ئیمزا دەوەستێت
+            } else {
+                pad.on(); // ئیمزا کار دەکاتەوە
+            }
+        }, { passive: true });
+
+        // کاتێک پەنجە دەجوڵێت، ئەگەر دوو دانە بن، ڕێگە دەدات مۆبایلەکە کارەکەی بکات
+        canvas.addEventListener('touchmove', function(e) {
+            if (e.touches.length > 1) {
+                pad.off();
+            }
+        }, { passive: true });
 
         async function save() {
             if (pad.isEmpty()) return alert("تکایە سەرەتا ئیمزا بکە");
-            
             loading.style.display = "block";
-            document.querySelector('.btns').style.opacity = "0.5";
-            document.querySelector('.btns').style.pointerEvents = "none";
-
             const temp = document.createElement('canvas');
             const ctx = temp.getContext('2d');
             temp.width = img.naturalWidth;
             temp.height = img.naturalHeight;
-
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, temp.width, temp.height);
             ctx.drawImage(img, 0, 0);
@@ -112,45 +119,23 @@
 
             try {
                 const base64Data = temp.toDataURL("image/jpeg", 0.5);
-
                 fetch(SCRIPT_URL, {
                     method: "POST",
                     mode: "no-cors", 
-                    cache: "no-cache",
-                    headers: { "Content-Type": "text/plain" },
-                    body: JSON.stringify({ 
-                        type: "SAVE_FINAL", 
-                        mergedImage: base64Data, 
-                        invoiceNum: urlParams.get('num') 
-                    })
+                    body: JSON.stringify({ type: "SAVE_FINAL", mergedImage: base64Data, invoiceNum: urlParams.get('num') })
                 });
-
                 setTimeout(() => {
                     loading.style.display = "none";
-                    alert("سەرکەوتوو بوو! فاتورەکە پاشەکەوت کرا و ڕەوانە کرا.");
+                    alert("سەرکەوتوو بوو!");
                     window.location.reload(); 
                 }, 3000);
-
             } catch (err) {
                 alert("هەڵە: " + err.message);
                 loading.style.display = "none";
-                document.querySelector('.btns').style.opacity = "1";
-                document.querySelector('.btns').style.pointerEvents = "auto";
             }
         }
 
         function clearPad() { pad.clear(); }
-
-        // چارەسەری کۆتایی بۆ زووم و سکڕۆڵ لە ناو فاتورەکەدا
-        canvas.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) {
-                // ئەگەر دوو پەنجە بوو، ڕێگە بدە وێبگەرەکە زووم و سکڕۆڵی ئاسایی بکات
-                pad.off(); 
-            } else {
-                // ئەگەر یەک پەنجە بوو، تەنها ئیمزا بکە
-                pad.on();
-            }
-        }, {passive: true});
     </script>
 </body>
 </html>
