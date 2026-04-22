@@ -2,30 +2,62 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>واژۆکردنی فاتورە</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #333; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #box { background: white; width: 95%; max-width: 450px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .canvas-area { position: relative; width: 100%; border: 2px solid #ddd; background: #fafafa; margin-bottom: 15px; overflow: hidden; border-radius: 8px; }
-        #invoice-img { width: 100%; display: block; }
+        body { font-family: Arial, sans-serif; background: #333; margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        #box { background: white; width: 95%; max-width: 500px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        
+        /* ڕێگەدان بە زووم و نیشاندانی تەواوی فاتورەکە */
+        .canvas-area { 
+            position: relative; 
+            width: 100%; 
+            border: 2px solid #ddd; 
+            background: #fafafa; 
+            margin-bottom: 15px; 
+            border-radius: 8px;
+            overflow: auto; /* ڕێگەدان بە سکڕۆڵ ئەگەر زووم کرا */
+        }
+        
+        #invoice-img { width: 100%; display: block; height: auto; }
         #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; z-index: 5; }
-        .btns { display: flex; gap: 10px; }
+        
+        .btns { display: flex; gap: 10px; margin-bottom: 20px; }
         button { flex: 1; padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
         #loading-overlay { display: none; margin-top: 10px; color: #1a73e8; font-weight: bold; }
+
+        /* ستایلی بەشی نووسینی خوارەوە */
+        .footer-info {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #ccc;
+            color: #555;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        .company-name { font-weight: bold; font-size: 18px; color: #333; display: block; }
+        .developer-name { font-style: italic; color: #777; }
     </style>
 </head>
 <body>
     <div id="box">
         <h3 style="margin-top: 0;">واژۆکردنی فاتورە</h3>
+        
         <div class="canvas-area">
             <img id="invoice-img">
             <canvas id="signature-pad"></canvas>
         </div>
+        
         <div id="loading-overlay">خەریکی ناردنە... تکایە چاوەڕێ بکە</div>
+        
         <div class="btns">
-            <button style="background:#28a745" onclick="save()">ناردن</button>
+            <button style="background:#28a745" onclick="save()">پاشەکەوتکردن</button>
             <button style="background:#dc3545" onclick="clearPad()">سڕینەوە</button>
+        </div>
+
+        <div class="footer-info">
+            <span class="company-name">شەریکەی دواء الحياة</span>
+            <span class="developer-name">لە لایەن ( دیلان ) دروستکراوە</span>
         </div>
     </div>
 
@@ -37,14 +69,10 @@
         const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
         const urlParams = new URLSearchParams(window.location.search);
         
-        // لێنکی Apps Script لێرە دابنێ
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
 
-        // چارەسەری هەڵەی SecurityError / Tainted Canvas
         if (urlParams.get('img')) {
-            img.crossOrigin = "anonymous"; // زۆر گرنگە بۆ ناردنی وێنەکە
-            
-            // بەکارهێنانی پرۆکسی بۆ ئەوەی ڕێگری لە 'Canvas Export' نەکرێت
+            img.crossOrigin = "anonymous";
             img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
             
             img.onload = () => {
@@ -53,7 +81,6 @@
             };
             
             img.onerror = () => {
-                // ئەگەر پرۆکسییەکە کاری نەکرد، ڕاستەوخۆ لێنکەکە تاقی دەکاتەوە
                 img.src = urlParams.get('img');
             };
         }
@@ -70,16 +97,14 @@
             temp.width = img.naturalWidth;
             temp.height = img.naturalHeight;
 
-            // دروستکردنی وێنە تێکەڵەکە
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, temp.width, temp.height);
             ctx.drawImage(img, 0, 0);
             ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, temp.width, temp.height);
 
             try {
-                const base64Data = temp.toDataURL("image/jpeg", 0.5); // کەمکردنەوەی قەبارە
+                const base64Data = temp.toDataURL("image/jpeg", 0.5);
 
-                // ناردن بۆ گوگل بە بێ چاوەڕێکردنی وەڵام (بۆ ڕێگریکردن لە وەستان لە GitHub)
                 fetch(SCRIPT_URL, {
                     method: "POST",
                     mode: "no-cors", 
@@ -92,7 +117,6 @@
                     })
                 });
 
-                // چونکە no-cors بەکاردێنین، دوای 3 چرکە یەکسەر پەیامی سەرکەوتوو دەدەین
                 setTimeout(() => {
                     loading.style.display = "none";
                     alert("سەرکەوتوو بوو! فاتورەکە پاشەکەوت کرا و ڕەوانە کرا.");
@@ -100,7 +124,7 @@
                 }, 3000);
 
             } catch (err) {
-                alert("هەڵە لە کاتی کۆنترۆڵکردنی وێنە: " + err.message);
+                alert("هەڵە: " + err.message);
                 loading.style.display = "none";
                 document.querySelector('.btns').style.opacity = "1";
                 document.querySelector('.btns').style.pointerEvents = "auto";
@@ -109,8 +133,11 @@
 
         function clearPad() { pad.clear(); }
         
+        // ڕێگەدان بە بەکارهێنانی دوو پەنجە بۆ زووم کردن لەسەر مۆبایل
         window.addEventListener("touchstart", function(e) {
-            if (e.target == canvas) e.preventDefault();
+            if (e.target == canvas && e.touches.length === 1) {
+                e.preventDefault(); // تەنها کاتێک یەک پەنجە بێت ڕێگری لە سکڕۆڵ دەکات (بۆ ئیمزا)
+            }
         }, { passive: false });
     </script>
 </body>
