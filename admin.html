@@ -10,6 +10,8 @@
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
         button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         #qrcode { margin-top: 20px; display: none; }
+        #status { margin-top: 15px; font-size: 14px; }
+        .direct-link { color: #1a73e8; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 10px; border: 1px solid #1a73e8; padding: 5px 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -18,36 +20,64 @@
         <input type="number" id="invNum" placeholder="ژمارەی فاتورە">
         <input type="file" id="invFile" accept="image/*">
         <button id="btn" onclick="upload()">دروستکردنی QR</button>
-        <div id="status" style="margin-top:10px;"></div>
+        <div id="status"></div>
         <canvas id="qrcode"></canvas>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <script>
+        // لێنکی Google Apps Script لێرە دابنێ
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
 
         async function upload() {
             const file = document.getElementById('invFile').files[0];
             const num = document.getElementById('invNum').value;
-            if(!file || !num) return alert("خانەکان پڕ بکەرەوە");
+            
+            if(!file || !num) return alert("تکایە خانەکان پڕ بکەرەوە");
 
             document.getElementById('btn').disabled = true;
             document.getElementById('status').innerText = "خەریکی ناردنە...";
 
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const res = await fetch(SCRIPT_URL, {
-                    method: "POST",
-                    body: JSON.stringify({ type: "UPLOAD_INVOICE", image: e.target.result, invoiceNum: num })
-                });
-                const result = await res.json();
-                
-                // دروستکردنی لێنکی کڕیار بە لێنکی کورتی وێنەکە
-                const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${num}&img=${encodeURIComponent(result.url)}`;
-                
-                new QRious({ element: document.getElementById('qrcode'), value: clientUrl, size: 250 });
-                document.getElementById('qrcode').style.display = "inline-block";
-                document.getElementById('status').innerText = "سەرکەوتوو بوو!";
+                try {
+                    const res = await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        body: JSON.stringify({ 
+                            type: "UPLOAD_INVOICE", 
+                            image: e.target.result, 
+                            invoiceNum: num 
+                        })
+                    });
+                    
+                    const result = await res.json();
+                    
+                    if(result.status === "success") {
+                        // دروستکردنی لێنکی کڕیار
+                        const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${num}&img=${encodeURIComponent(result.url)}`;
+                        
+                        // دروستکردنی QR Code
+                        new QRious({ 
+                            element: document.getElementById('qrcode'), 
+                            value: clientUrl, 
+                            size: 250 
+                        });
+
+                        document.getElementById('qrcode').style.display = "inline-block";
+                        document.getElementById('btn').disabled = false;
+
+                        // گۆڕانکارییەکە لێرەیە:
+                        const finalLink = `<br><br><a href="${clientUrl}" target="_blank" class="direct-link">بۆ کردنەوەی لاپەڕەی ئیمزا کلیک لێرە بکە</a>`;
+                        document.getElementById('status').innerHTML = "سەرکەوتوو بوو!" + finalLink;
+                        
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } catch (error) {
+                    alert("هەڵەیەک ڕوویدا: " + error.message);
+                    document.getElementById('btn').disabled = false;
+                    document.getElementById('status').innerText = "هەڵە لە ناردن";
+                }
             };
             reader.readAsDataURL(file);
         }
