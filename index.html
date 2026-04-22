@@ -6,7 +6,7 @@
     <title>واژۆکردنی فاتورە</title>
     <style>
         body { font-family: Arial, sans-serif; background: #333; margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        #box { background: white; width: 95%; max-width: 500px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        #box { background: white; width: 95%; max-width: 500px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
         .canvas-area { 
             position: relative; 
@@ -18,8 +18,18 @@
             overflow: visible; 
         }
         
-        #invoice-img { width: 100%; display: block; height: auto; pointer-events: none; }
-        #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; z-index: 5; }
+        #invoice-img { width: 100%; display: block; height: auto; }
+        
+        /* گۆڕانکاری سەرەکی لێرەدایە: pinch-zoom ڕێگە بە زووم دەدات بە دوو پەنجە */
+        #signature-pad { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            touch-action: pinch-zoom; 
+            z-index: 5; 
+        }
         
         .btns { display: flex; gap: 10px; margin-bottom: 20px; }
         button { flex: 1; padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
@@ -131,27 +141,16 @@
 
         function clearPad() { pad.clear(); }
 
-        // --- چاکسازی سەرەکی بۆ زووم لە هەموو شوێنێک ---
-        function handleTouch(e) {
+        // چارەسەری کۆتایی بۆ زووم و سکڕۆڵ لە ناو فاتورەکەدا
+        canvas.addEventListener('touchstart', function(e) {
             if (e.touches.length > 1) {
-                // ئەگەر دوو پەنجە بوو، ئیمزا پەکبخە و ڕێگە بە زووم بدە
-                pad.off();
-                canvas.style.pointerEvents = "none"; 
+                // ئەگەر دوو پەنجە بوو، ڕێگە بدە وێبگەرەکە زووم و سکڕۆڵی ئاسایی بکات
+                pad.off(); 
             } else {
-                // ئەگەر یەک پەنجە بوو، ئیمزا چالاک بکە
+                // ئەگەر یەک پەنجە بوو، تەنها ئیمزا بکە
                 pad.on();
-                canvas.style.pointerEvents = "auto";
             }
-        }
-
-        // کاتێک پەنجە دادەنێت
-        window.addEventListener('touchstart', handleTouch, {passive: false});
-        
-        // کاتێک پەنجە لادەبات
-        window.addEventListener('touchend', function() {
-            pad.on();
-            canvas.style.pointerEvents = "auto";
-        });
+        }, {passive: true});
     </script>
 </body>
 </html>
