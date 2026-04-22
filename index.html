@@ -8,7 +8,6 @@
         body { font-family: Arial, sans-serif; background: #333; margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         #box { background: white; width: 95%; max-width: 500px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         
-        /* ڕێگەدان بە زووم و نیشاندانی تەواوی فاتورەکە */
         .canvas-area { 
             position: relative; 
             width: 100%; 
@@ -16,7 +15,7 @@
             background: #fafafa; 
             margin-bottom: 15px; 
             border-radius: 8px;
-            overflow: auto; /* ڕێگەدان بە سکڕۆڵ ئەگەر زووم کرا */
+            overflow: visible; /* ڕێگەدان بە زووم بێ ئەوەی ببڕێت */
         }
         
         #invoice-img { width: 100%; display: block; height: auto; }
@@ -26,7 +25,6 @@
         button { flex: 1; padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
         #loading-overlay { display: none; margin-top: 10px; color: #1a73e8; font-weight: bold; }
 
-        /* ستایلی بەشی نووسینی خوارەوە */
         .footer-info {
             margin-top: 20px;
             padding-top: 15px;
@@ -69,6 +67,7 @@
         const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
         const urlParams = new URLSearchParams(window.location.search);
         
+        // لێنکی Apps Script لێرە دابنێ
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
 
         if (urlParams.get('img')) {
@@ -133,12 +132,20 @@
 
         function clearPad() { pad.clear(); }
         
-        // ڕێگەدان بە بەکارهێنانی دوو پەنجە بۆ زووم کردن لەسەر مۆبایل
-        window.addEventListener("touchstart", function(e) {
-            if (e.target == canvas && e.touches.length === 1) {
-                e.preventDefault(); // تەنها کاتێک یەک پەنجە بێت ڕێگری لە سکڕۆڵ دەکات (بۆ ئیمزا)
+        // ئەم بەشە ڕێگە بە زوومی ئاسایی دەدات بە دوو پەنجە
+        canvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                // ئەگەر زیاتر لە یەک پەنجە بوو، ڕێگری لە ئیمزا بکە تا زووم کار بکات
+                pad.off(); 
+            } else {
+                // ئەگەر یەک پەنجە بوو، ئیمزا چالاک بکە
+                pad.on();
             }
-        }, { passive: false });
+        }, {passive: false});
+
+        canvas.addEventListener('touchend', function() {
+            pad.on(); // هەمیشە دوای لێکردنەوەی پەنجە چالاکی بکەرەوە
+        });
     </script>
 </body>
 </html>
