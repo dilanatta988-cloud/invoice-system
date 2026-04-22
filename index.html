@@ -15,10 +15,10 @@
             background: #fafafa; 
             margin-bottom: 15px; 
             border-radius: 8px;
-            overflow: visible; /* ڕێگەدان بە زووم بێ ئەوەی ببڕێت */
+            overflow: visible; 
         }
         
-        #invoice-img { width: 100%; display: block; height: auto; }
+        #invoice-img { width: 100%; display: block; height: auto; pointer-events: none; }
         #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; z-index: 5; }
         
         .btns { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -67,7 +67,6 @@
         const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
         const urlParams = new URLSearchParams(window.location.search);
         
-        // لێنکی Apps Script لێرە دابنێ
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
 
         if (urlParams.get('img')) {
@@ -131,20 +130,27 @@
         }
 
         function clearPad() { pad.clear(); }
-        
-        // ئەم بەشە ڕێگە بە زوومی ئاسایی دەدات بە دوو پەنجە
-        canvas.addEventListener('touchstart', function(e) {
+
+        // --- چاکسازی سەرەکی بۆ زووم لە هەموو شوێنێک ---
+        function handleTouch(e) {
             if (e.touches.length > 1) {
-                // ئەگەر زیاتر لە یەک پەنجە بوو، ڕێگری لە ئیمزا بکە تا زووم کار بکات
-                pad.off(); 
+                // ئەگەر دوو پەنجە بوو، ئیمزا پەکبخە و ڕێگە بە زووم بدە
+                pad.off();
+                canvas.style.pointerEvents = "none"; 
             } else {
                 // ئەگەر یەک پەنجە بوو، ئیمزا چالاک بکە
                 pad.on();
+                canvas.style.pointerEvents = "auto";
             }
-        }, {passive: false});
+        }
 
-        canvas.addEventListener('touchend', function() {
-            pad.on(); // هەمیشە دوای لێکردنەوەی پەنجە چالاکی بکەرەوە
+        // کاتێک پەنجە دادەنێت
+        window.addEventListener('touchstart', handleTouch, {passive: false});
+        
+        // کاتێک پەنجە لادەبات
+        window.addEventListener('touchend', function() {
+            pad.on();
+            canvas.style.pointerEvents = "auto";
         });
     </script>
 </body>
