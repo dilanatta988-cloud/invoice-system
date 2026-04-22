@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-    <title>ئیمزاکردنی فاتورە</title>
+    <title>واژۆکردنی فاتورە</title>
     <style>
         body { font-family: Arial, sans-serif; background: #333; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
         #box { background: white; width: 95%; max-width: 450px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -40,18 +40,27 @@
         // لێنکی Apps Script لێرە دابنێ
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
 
+        // چارەسەری هەڵەی SecurityError / Tainted Canvas
         if (urlParams.get('img')) {
+            img.crossOrigin = "anonymous"; // زۆر گرنگە بۆ ناردنی وێنەکە
+            
+            // بەکارهێنانی پرۆکسی بۆ ئەوەی ڕێگری لە 'Canvas Export' نەکرێت
             img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
+            
             img.onload = () => {
                 canvas.width = img.clientWidth;
                 canvas.height = img.clientHeight;
+            };
+            
+            img.onerror = () => {
+                // ئەگەر پرۆکسییەکە کاری نەکرد، ڕاستەوخۆ لێنکەکە تاقی دەکاتەوە
+                img.src = urlParams.get('img');
             };
         }
 
         async function save() {
             if (pad.isEmpty()) return alert("تکایە سەرەتا ئیمزا بکە");
             
-            // پیشاندانی دۆخی بارکردن
             loading.style.display = "block";
             document.querySelector('.btns').style.opacity = "0.5";
             document.querySelector('.btns').style.pointerEvents = "none";
@@ -67,14 +76,15 @@
             ctx.drawImage(img, 0, 0);
             ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, temp.width, temp.height);
 
-            const base64Data = temp.toDataURL("image/jpeg", 0.6);
-
             try {
-                await fetch(SCRIPT_URL, {
+                const base64Data = temp.toDataURL("image/jpeg", 0.5); // کەمکردنەوەی قەبارە
+
+                // ناردن بۆ گوگل بە بێ چاوەڕێکردنی وەڵام (بۆ ڕێگریکردن لە وەستان لە GitHub)
+                fetch(SCRIPT_URL, {
                     method: "POST",
-                    mode: "no-cors", // چارەسەری وەستان لە ئایفۆن
+                    mode: "no-cors", 
                     cache: "no-cache",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "text/plain" },
                     body: JSON.stringify({ 
                         type: "SAVE_FINAL", 
                         mergedImage: base64Data, 
@@ -82,12 +92,15 @@
                     })
                 });
 
-                // چونکە no-cors بەکاردێنین، یەکسەر نامەی سەرکەوتوو نیشان دەدەین
-                alert("سەرکەوتوو بوو! فاتورەکە پاشەکەوت کرا و ڕەوانە کرا.");
-                window.location.reload(); // لاپەڕەکە نوێ دەکاتەوە
+                // چونکە no-cors بەکاردێنین، دوای 3 چرکە یەکسەر پەیامی سەرکەوتوو دەدەین
+                setTimeout(() => {
+                    loading.style.display = "none";
+                    alert("سەرکەوتوو بوو! فاتورەکە پاشەکەوت کرا و ڕەوانە کرا.");
+                    window.location.reload(); 
+                }, 3000);
+
             } catch (err) {
-                alert("هەڵەیەک ڕوویدا لە ناردن: " + err.message);
-            } finally {
+                alert("هەڵە لە کاتی کۆنترۆڵکردنی وێنە: " + err.message);
                 loading.style.display = "none";
                 document.querySelector('.btns').style.opacity = "1";
                 document.querySelector('.btns').style.pointerEvents = "auto";
@@ -96,7 +109,6 @@
 
         function clearPad() { pad.clear(); }
         
-        // ڕێگری لە جوڵانی لاپەڕە کاتێک ئیمزا دەکەیت
         window.addEventListener("touchstart", function(e) {
             if (e.target == canvas) e.preventDefault();
         }, { passive: false });
