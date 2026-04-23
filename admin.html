@@ -3,32 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - High Quality Print</title>
+    <title>Admin - Upload & Print</title>
     <style>
-        body { font-family: 'Tahoma', sans-serif; text-align: center; background: #f4f7f6; padding: 20px; margin: 0; }
+        body { font-family: 'Tahoma', sans-serif; text-align: center; background: #f4f7f6; padding: 20px; }
         .card { background: white; padding: 20px; border-radius: 12px; display: inline-block; width: 100%; max-width: 450px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; }
         .btn-blue { background: #1a73e8; color: white; }
         .btn-green { background: #28a745; color: white; display: none; margin-top: 15px; }
         #status { margin-top: 15px; font-size: 14px; color: #555; }
+        #printArea { display: none; margin-top: 20px; }
+        canvas { max-width: 100%; border: 1px solid #ddd; }
         
-        /* شوێنی پیشاندانی فاتورەکە تەنها بۆ بینین */
-        #printArea { display: none; margin-top: 20px; border: 2px solid #ddd; padding: 10px; background: #fff; }
-        canvas { max-width: 100%; height: auto; }
-        
-        /* ڕێکخستنی تایبەت بە کاتی پرنت */
         @media print {
             body { background: white !important; padding: 0 !important; margin: 0 !important; }
             .card, h2, #status, .btn-blue, .btn-green { display: none !important; }
-            #printArea { display: block !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
-            canvas { width: 100% !important; max-width: 100% !important; visibility: visible !important; }
+            #printArea { display: block !important; margin: 0 !important; padding: 0 !important; }
+            #printCanvas { width: 100% !important; visibility: visible !important; position: absolute; left: 0; top: 0; }
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>ئامادەکردنی فاتورە</h2>
+        <h2>ناردنی فاتورە و چاپکردن</h2>
         <input type="number" id="invNum" placeholder="ژمارەی فاتورە">
         <input type="file" id="invFile" accept="image/*">
         <button id="btn" class="btn-blue" onclick="upload()">١. دروستکردنی QR</button>
@@ -36,7 +33,7 @@
         
         <div id="printArea">
             <canvas id="printCanvas"></canvas>
-            <button class="btn-green" id="printBtn" onclick="printInvoice()">٢. چاپکردنی فاتورە (Print)</button>
+            <button class="btn-green" id="printBtn" onclick="window.print()">٢. چاپکردنی فاتورە (Print)</button>
         </div>
     </div>
 
@@ -47,26 +44,23 @@
         async function upload() {
             const file = document.getElementById('invFile').files[0];
             const num = document.getElementById('invNum').value;
-            if(!file || !num) return alert("تکایە هەموو زانیارییەکان پڕبکەرەوە");
+            if(!file || !num) return alert("تکایە خانەکان پڕ بکەرەوە");
 
             document.getElementById('btn').disabled = true;
-            document.getElementById('status').innerText = "خەریکی ناردنی وێنەیە...";
+            document.getElementById('status').innerText = "خەریکی ئامادەکردنە...";
 
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const base64Image = e.target.result;
                 try {
                     const res = await fetch(SCRIPT_URL, {
                         method: "POST",
-                        body: JSON.stringify({ type: "UPLOAD_INVOICE", image: base64Image, invoiceNum: num })
+                        body: JSON.stringify({ type: "UPLOAD_INVOICE", image: e.target.result, invoiceNum: num })
                     });
                     const result = await res.json();
                     
                     if(result.status === "success") {
                         const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${num}&img=${encodeURIComponent(result.url)}`;
-                        
-                        // کێشانی وێنەکە
-                        renderHighQualityInvoice(base64Image, clientUrl);
+                        generatePrintableInvoice(e.target.result, clientUrl);
                         
                         document.getElementById('status').innerText = "سەرکەوتوو بوو! ئێستا دەتوانیت پرنتی بکەیت.";
                         document.getElementById('printBtn').style.display = "block";
@@ -81,7 +75,7 @@
             reader.readAsDataURL(file);
         }
 
-        function renderHighQualityInvoice(base64Inv, qrUrl) {
+        function generatePrintableInvoice(base64Inv, qrUrl) {
             const canvas = document.getElementById('printCanvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
@@ -90,6 +84,7 @@
                 canvas.width = img.naturalWidth;
                 canvas.height = img.naturalHeight;
                 
+                // ڕێکخستنی کوالیتی بەرز
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
                 
@@ -99,31 +94,32 @@
                 
                 const qrSize = Math.floor(canvas.width * 0.16); 
                 const qr = new QRious({ value: qrUrl, size: qrSize, level: 'H' });
-                
                 const qrImg = new Image();
+                
                 qrImg.onload = function() {
-                    const margin = Math.floor(canvas.width * 0.04);
-                    const x = canvas.width - qrSize - margin;
-                    const y = canvas.height - qrSize - margin;
+                    // *** لێرەدا شوێنەکەی دیاری دەکرێت ***
+                    // بۆ ئەوەی بچێتە سەرووتر و بەرەو ناوەڕاست:
+                    const marginFromBottom = Math.floor(canvas.height * 0.15); // ١٥٪ لە خوارەوە بەرزتر بێت
+                    const marginFromRight = Math.floor(canvas.width * 0.12);  // ١٢٪ بەرەو ناوەڕاست بێت
+                    
+                    const x = canvas.width - qrSize - marginFromRight;
+                    const y = canvas.height - qrSize - marginFromBottom;
 
+                    // نوسینەکە
                     ctx.fillStyle = "black";
                     const fontSize = Math.floor(qrSize * 0.12);
                     ctx.font = `bold ${fontSize}px Tahoma, Arial`;
                     ctx.textAlign = "center";
                     
+                    // نوسینی دەقەکە لە سەروو QR
                     ctx.fillText("بۆ ئیمزاکردنی ئەلکترۆنی ئەم کۆدە سکان بکە", x + (qrSize / 2), y - 20);
+                    
+                    // کێشانی QR
                     ctx.drawImage(qrImg, x, y, qrSize, qrSize);
                 };
                 qrImg.src = qr.toDataURL();
             };
             img.src = base64Inv;
-        }
-
-        function printInvoice() {
-            // دڵنیابوونەوە لەوەی کەمێک دەوەستێت بۆ ئەوەی وێبگەڕەکە کانڤاسەکە بناسێتەوە
-            setTimeout(() => {
-                window.print();
-            }, 500);
         }
     </script>
 </body>
