@@ -3,118 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بەڕێوەبردنی فاتورەکان</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>Admin - Upload</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 450px; width: 100%; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
-        h2 { color: #333; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        .btn-qr { width: 100%; padding: 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background-color: #1a73e8; color: white; font-size: 16px; transition: 0.3s; }
-        .btn-qr:hover { background-color: #1557b0; }
-        #qr-result { margin-top: 20px; display: none; border-top: 1px solid #eee; padding-top: 20px; }
-        #qrcode { display: inline-block; padding: 10px; background: white; }
-        .btn-print { width: 100%; padding: 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background-color: #28a745; color: white; margin-top: 15px; font-size: 16px; }
+        body { font-family: Arial; text-align: center; background: #f4f7f6; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; display: inline-block; width: 100%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #qrcode { margin-top: 20px; display: none; }
+        #status { margin-top: 15px; font-size: 14px; }
+        .direct-link { color: #1a73e8; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 10px; border: 1px solid #1a73e8; padding: 5px 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>ناردنی فاتورە</h2>
-    <input type="text" id="inv-num" placeholder="ژمارەی فاتورە بنووسە">
-    <input type="file" id="inv-file" accept="image/*">
-    
-    <button class="btn-qr" id="process-btn" onclick="processInvoice()">دروستکردنی QR</button>
-    
-    <div id="qr-result">
-        <p>QR کۆد بۆ کڕیار:</p>
-        <div id="qrcode"></div>
-        <button class="btn-print" onclick="printInvoice()">🖨 چاپکردنی فاتورە لەگەڵ QR</button>
+    <div class="card">
+        <h2>ناردنی فاتورە</h2>
+        <input type="number" id="invNum" placeholder="ژمارەی فاتورە">
+        <input type="file" id="invFile" accept="image/*">
+        <button id="btn" onclick="upload()">دروستکردنی QR</button>
+        <div id="status"></div>
+        <canvas id="qrcode"></canvas>
     </div>
-</div>
 
-<script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
-    const BASE_URL = "https://dilanatta988-cloud.github.io/invoice-system/index.html";
-    let currentImgData = "";
-    let currentFinalUrl = "";
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script>
+        // لێنکی Google Apps Script لێرە دابنێ
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypQAm8uZYxKMTMV7gOim00uk8PEyPazPa06IughIDnF0aa7-BxVJpDRY7ARFIqmw/exec";
 
-    function processInvoice() {
-        const num = document.getElementById('inv-num').value;
-        const fileInput = document.getElementById('inv-file');
-        
-        if (!num || !fileInput.files[0]) return alert("تکایە ژمارەی فاتورە و وێنەکە دیاری بکە");
-
-        const btn = document.getElementById('process-btn');
-        btn.innerText = "خەریکی کارکردنە...";
-        btn.disabled = true;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            currentImgData = e.target.result;
+        async function upload() {
+            const file = document.getElementById('invFile').files[0];
+            const num = document.getElementById('invNum').value;
             
-            // ناردنی بۆ گوگل وەک پێشوو
-            fetch(SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                body: JSON.stringify({ type: "UPLOAD_INVOICE", image: currentImgData, invoiceNum: num })
-            });
+            if(!file || !num) return alert("تکایە خانەکان پڕ بکەرەوە");
 
-            // دروستکردنی لێنکی کڕیار
-            currentFinalUrl = `${BASE_URL}?num=${num}&img=${encodeURIComponent(currentImgData)}`;
-            
-            // پیشاندانی QR لەسەر شاشە
-            document.getElementById('qrcode').innerHTML = "";
-            new QRCode(document.getElementById("qrcode"), { text: currentFinalUrl, width: 180, height: 180 });
-            
-            document.getElementById('qr-result').style.display = "block";
-            btn.innerText = "دروستکردنی QR";
-            btn.disabled = false;
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    }
+            document.getElementById('btn').disabled = true;
+            document.getElementById('status').innerText = "خەریکی ناردنە...";
 
-    function printInvoice() {
-        // دروستکردنی لاپەڕەیەکی کاتی بۆ پرێنت
-        const printWindow = window.open('', '_blank');
-        const qrCanvas = document.querySelector('#qrcode canvas');
-        const qrImage = qrCanvas.toDataURL("image/png");
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const res = await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        body: JSON.stringify({ 
+                            type: "UPLOAD_INVOICE", 
+                            image: e.target.result, 
+                            invoiceNum: num 
+                        })
+                    });
+                    
+                    const result = await res.json();
+                    
+                    if(result.status === "success") {
+                        // دروستکردنی لێنکی کڕیار
+                        const clientUrl = `https://dilanatta988-cloud.github.io/invoice-system/index.html?num=${num}&img=${encodeURIComponent(result.url)}`;
+                        
+                        // دروستکردنی QR Code
+                        new QRious({ 
+                            element: document.getElementById('qrcode'), 
+                            value: clientUrl, 
+                            size: 250 
+                        });
 
-        printWindow.document.write(`
-            <html>
-            <head>
-                <title>Print Invoice</title>
-                <style>
-                    body { margin: 0; padding: 0; text-align: center; }
-                    .wrapper { position: relative; display: inline-block; width: 100%; }
-                    .invoice-img { width: 100%; height: auto; display: block; }
-                    .qr-code { 
-                        position: absolute; 
-                        top: 20px; 
-                        left: 20px; 
-                        width: 120px; 
-                        border: 3px solid white;
-                        box-shadow: 0 0 5px rgba(0,0,0,0.2);
+                        document.getElementById('qrcode').style.display = "inline-block";
+                        document.getElementById('btn').disabled = false;
+
+                        // گۆڕانکارییەکە لێرەیە:
+                        const finalLink = `<br><br><a href="${clientUrl}" target="_blank" class="direct-link">بۆ کردنەوەی لاپەڕەی ئیمزا کلیک لێرە بکە</a>`;
+                        document.getElementById('status').innerHTML = "سەرکەوتوو بوو!" + finalLink;
+                        
+                    } else {
+                        throw new Error(result.message);
                     }
-                </style>
-            </head>
-            <body>
-                <div class="wrapper">
-                    <img src="${currentImgData}" class="invoice-img">
-                    <img src="${qrImage}" class="qr-code">
-                </div>
-                <script>
-                    window.onload = function() { 
-                        window.print(); 
-                        setTimeout(function() { window.close(); }, 500);
-                    };
-                <\/script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-    }
-</script>
-
+                } catch (error) {
+                    alert("هەڵەیەک ڕوویدا: " + error.message);
+                    document.getElementById('btn').disabled = false;
+                    document.getElementById('status').innerText = "هەڵە لە ناردن";
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    </script>
 </body>
 </html>
