@@ -2,139 +2,145 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>واژۆکردنی فاتورە</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستەمی واژۆی ئەلیکترۆنی</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #333; margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        #box { background: white; width: 95%; max-width: 500px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        .canvas-area { 
-            position: relative; 
-            width: 100%; 
-            border: 2px solid #ddd; 
-            background: #fafafa; 
-            margin-bottom: 15px; 
-            border-radius: 8px;
-            touch-action: auto !important; 
-        }
-        
-        #invoice-img { width: 100%; display: block; height: auto; pointer-events: none; }
-        #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: pinch-zoom !important; z-index: 5; }
-        
-        .btns { display: flex; gap: 10px; margin-bottom: 20px; }
-        button { flex: 1; padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
-        #loading-overlay { display: none; margin-top: 10px; color: #1a73e8; font-weight: bold; }
-
-        /* ستایلی نوێ بۆ لۆگۆ و گۆڕانکارییەکانت */
-        .footer-info {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px dashed #ccc;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        .logo-img {
-            max-width: 120px; /* قەبارەی لۆگۆکە لێرە دەتوانی بگۆڕی */
-            height: auto;
-        }
-        .created-by {
-            font-size: 12px;
-            color: #888;
-            letter-spacing: 1px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        body { font-family: 'Tahoma', sans-serif; background-color: #f4f4f9; text-align: center; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        canvas { border: 2px solid #333; border-radius: 5px; background: #fff; cursor: crosshair; touch-action: none; width: 100%; max-width: 400px; height: 200px; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-family: 'Tahoma'; font-size: 14px; }
+        button { background-color: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; font-family: 'Tahoma'; transition: 0.3s; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        h2 { color: #333; }
+        .info-label { display: block; text-align: right; margin-right: 5%; font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
-    <div id="box">
-        <h3 style="margin-top: 0;">واژۆکردنی فاتورە</h3>
-        
-        <div class="canvas-area">
-            <img id="invoice-img">
-            <canvas id="signature-pad"></canvas>
-        </div>
-        
-        <div id="loading-overlay">خەریکی ناردنە... تکایە چاوەڕێ بکە</div>
-        
-        <div class="btns">
-            <button style="background:#28a745" onclick="save()">پاشەکەوتکردن</button>
-            <button style="background:#dc3545" onclick="clearPad()">سڕینەوە</button>
-        </div>
 
-        <div class="footer-info">
-            <img src="A.jpg" alt="Dawa Alhayat" class="logo-img">
-            <div class="created-by"> Created by Dilan</div>
-        </div>
-    </div>
+<div class="container">
+    <h2>واژۆکردنی فاتورە</h2>
+    
+    <label class="info-label">ناوی تەواو:</label>
+    <input type="text" id="custName" placeholder="ناوی خۆت بنووسە...">
+    
+    <label class="info-label">ڕەقەمی مۆبایل:</label>
+    <input type="tel" id="custPhone" placeholder="0750XXXXXXX">
 
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
-    <script>
-        const canvas = document.getElementById('signature-pad');
-        const img = document.getElementById('invoice-img');
-        const loading = document.getElementById('loading-overlay');
-        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
-        const urlParams = new URLSearchParams(window.location.search);
+    <hr>
+    
+    <label class="info-label">واژۆ لێرە بکە:</label>
+    <canvas id="signature-pad"></canvas>
+    <br>
+    <button onclick="clearCanvas()" style="background-color: #dc3545; padding: 8px 15px; margin-top: 5px; font-size: 12px;">سڕینەوەی واژۆ</button>
+    
+    <br><br>
+    <button id="saveBtn" onclick="saveInvoice()">پاشەکەوتکردن و ناردن</button>
+</div>
+
+<script>
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    // ڕێکخستنی قەبارەی کانڤاس
+    canvas.width = 400;
+    canvas.height = 200;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+
+    // وەرگرتنی ژمارەی فاتورە لە لێنکەکە (بۆ نموونە ?inv=1001)
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentInvNum = urlParams.get('inv') || "بەردەست نییە";
+
+    // کردارەکانی کێشان (Mouse & Touch)
+    function startDrawing(e) { drawing = true; draw(e); }
+    function stopDrawing() { drawing = false; ctx.beginPath(); }
+    
+    function draw(e) {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
         
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZyuDXC15z50z9a44loi17OsJoUQNXiDLkZxLmD2qblbud1O12mHuiqw3F3Gp-YtM/exec";
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
 
-        if (urlParams.get('img')) {
-            img.crossOrigin = "anonymous";
-            img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
-            img.onload = () => {
-                canvas.width = img.clientWidth;
-                canvas.height = img.clientHeight;
-            };
-            img.onerror = () => { img.src = urlParams.get('img'); };
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); });
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveInvoice() {
+        const name = document.getElementById('custName').value.trim();
+        const phone = document.getElementById('custPhone').value.trim();
+        const saveBtn = document.getElementById('saveBtn');
+
+        // پشکنینی ناو و مۆبایل
+        if (!name || !phone) {
+            alert("تکایە ناو و مۆبایلەکەت بنووسە پێش ئەوەی واژۆ بکەیت.");
+            return;
         }
 
-        // ڕێکخستنی زووم بە دوو پەنجە
-        canvas.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) { pad.off(); } else { pad.on(); }
-        }, { passive: true });
+        // پشکنینی ئەوەی کە ئایا واژۆی کردووە (بەراوردکردنی کانڤاسە بەتاڵەکە)
+        const blank = document.createElement('canvas');
+        blank.width = canvas.width;
+        blank.height = canvas.height;
+        if (canvas.toDataURL() === blank.toDataURL()) {
+            alert("تکایە سەرەتا واژۆ بکە.");
+            return;
+        }
 
-        canvas.addEventListener('touchmove', function(e) {
-            if (e.touches.length > 1) { pad.off(); }
-        }, { passive: true });
+        // دەستپێکردنی لۆدینگ
+        saveBtn.innerText = "خەریکی ناردنە... تکایە چاوەڕێ بکە";
+        saveBtn.disabled = true;
 
-        async function save() {
-            if (pad.isEmpty()) return alert("تکایە سەرەتا ئیمزا بکە");
-            loading.style.display = "block";
-            
-            const temp = document.createElement('canvas');
-            const ctx = temp.getContext('2d');
-            temp.width = img.naturalWidth;
-            temp.height = img.naturalHeight;
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, temp.width, temp.height);
-            ctx.drawImage(img, 0, 0);
-            ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, temp.width, temp.height);
+        const payload = {
+            type: "SAVE_FINAL",
+            invoiceNum: currentInvNum,
+            mergedImage: canvas.toDataURL("image/jpeg"),
+            customerName: name,
+            customerPhone: phone
+        };
 
-            try {
-                const base64Data = temp.toDataURL("image/jpeg", 0.5);
-                fetch(SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors", 
-                    body: JSON.stringify({ 
-                        type: "SAVE_FINAL", 
-                        mergedImage: base64Data, 
-                        invoiceNum: urlParams.get('num') 
-                    })
-                });
+        // --- لێرە لێنکی ویب ئەپەکەی گوگل دابنێ ---
+        const scriptURL = "https://script.google.com/macros/s/AKfycbw5gHr_OeDAcmeJiTp7WiFXH5ZvuM22LIvFVMqioCUuNN20as9QoomiYGjP5nHk09M/exec";
 
-                setTimeout(() => {
-                    loading.style.display = "none";
-                    alert("سەرکەوتوو بوو!");
-                    window.location.reload(); 
-                }, 3000);
-            } catch (err) {
-                alert("هەڵە: " + err.message);
-                loading.style.display = "none";
+        fetch(scriptURL, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert("واژۆکەت بە سەرکەوتوویی پاشەکەوت کرا و بۆ کاک دیلان نێردرا.");
+                clearCanvas();
+                document.getElementById('custName').value = "";
+                document.getElementById('custPhone').value = "";
+            } else {
+                alert("هەڵەیەک ڕوویدا: " + data.message);
             }
-        }
+        })
+        .catch(err => {
+            alert("کێشەیەک لە پەیوەندی ئینتەرنێتەکەتدا هەیە.");
+            console.error(err);
+        })
+        .finally(() => {
+            saveBtn.innerText = "پاشەکەوتکردن و ناردن";
+            saveBtn.disabled = false;
+        });
+    }
+</script>
 
-        function clearPad() { pad.clear(); }
-    </script>
 </body>
 </html>
