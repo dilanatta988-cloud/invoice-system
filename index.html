@@ -2,139 +2,141 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>واژۆکردنی فاتورە</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستەمی واژۆی فەرمی - Dawa Al-Hayat</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #333; margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        #box { background: white; width: 95%; max-width: 500px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        .canvas-area { 
-            position: relative; 
-            width: 100%; 
-            border: 2px solid #ddd; 
-            background: #fafafa; 
-            margin-bottom: 15px; 
-            border-radius: 8px;
-            touch-action: auto !important; 
-        }
-        
-        #invoice-img { width: 100%; display: block; height: auto; pointer-events: none; }
-        #signature-pad { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: pinch-zoom !important; z-index: 5; }
-        
-        .btns { display: flex; gap: 10px; margin-bottom: 20px; }
-        button { flex: 1; padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
-        #loading-overlay { display: none; margin-top: 10px; color: #1a73e8; font-weight: bold; }
-
-        /* ستایلی نوێ بۆ لۆگۆ و گۆڕانکارییەکانت */
-        .footer-info {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px dashed #ccc;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        .logo-img {
-            max-width: 120px; /* قەبارەی لۆگۆکە لێرە دەتوانی بگۆڕی */
-            height: auto;
-        }
-        .created-by {
-            font-size: 12px;
-            color: #888;
-            letter-spacing: 1px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        body { font-family: 'Tahoma', sans-serif; background: #f4f7f6; padding: 15px; text-align: center; color: #333; }
+        .main-card { max-width: 450px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-family: 'Tahoma'; }
+        video { width: 100%; border-radius: 10px; background: #000; margin-bottom: 10px; }
+        canvas { width: 100%; border: 2px solid #eee; border-radius: 10px; background: #fff; touch-action: none; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-camera { background: #34a853; color: white; }
+        .btn-save { background: #1a73e8; color: white; font-size: 18px; }
+        .btn:disabled { background: #ccc; }
+        #preview-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 10px auto; display: none; border: 3px solid #34a853; }
     </style>
 </head>
 <body>
-    <div id="box">
-        <h3 style="margin-top: 0;">واژۆکردنی فاتورە</h3>
-        
-        <div class="canvas-area">
-            <img id="invoice-img">
-            <canvas id="signature-pad"></canvas>
-        </div>
-        
-        <div id="loading-overlay">خەریکی ناردنە... تکایە چاوەڕێ بکە</div>
-        
-        <div class="btns">
-            <button style="background:#28a745" onclick="save()">پاشەکەوتکردن</button>
-            <button style="background:#dc3545" onclick="clearPad()">سڕینەوە</button>
-        </div>
 
-        <div class="footer-info">
-            <img src="A.jpg" alt="Dawa Alhayat" class="logo-img">
-            <div class="created-by"> Created by Dilan</div>
-        </div>
+<div class="main-card">
+    <h2 style="color: #1a73e8;">واژۆی وەرگرتنی مەواد</h2>
+    
+    <input type="text" id="custName" placeholder="ناوی تەواوی وەرگر">
+    <input type="tel" id="custPhone" placeholder="ڕەقەمی مۆبایل">
+
+    <div style="background: #eef2f7; padding: 10px; border-radius: 10px; margin-top: 10px;">
+        <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">هەنگاوی ١: وێنەی وەرگر (سێڵفی)</p>
+        <video id="video" autoplay playsinline></video>
+        <img id="preview-img">
+        <button class="btn btn-camera" onclick="takePhoto()">📷 گرتنی وێنەی سێڵفی</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
-    <script>
-        const canvas = document.getElementById('signature-pad');
-        const img = document.getElementById('invoice-img');
-        const loading = document.getElementById('loading-overlay');
-        const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzyzkLSyfpXhcrHikk_R5T2y5LiBu5KDNfBdQ-yotruhkhqXJOzjO7vyxUD7pl9aII/exec";
+    <div style="margin-top: 20px;">
+        <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">هەنگاوی ٢: واژۆ لێرە بکە</p>
+        <canvas id="sig-canvas" height="180"></canvas>
+        <button onclick="clearSig()" style="background:none; border:none; color:red; cursor:pointer; font-size: 12px;">سڕینەوەی واژۆ</button>
+    </div>
 
-        if (urlParams.get('img')) {
-            img.crossOrigin = "anonymous";
-            img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
-            img.onload = () => {
-                canvas.width = img.clientWidth;
-                canvas.height = img.clientHeight;
+    <button class="btn btn-save" id="saveBtn" onclick="submitData()">پاشەکەوتکردن و ناردنی فەرمی</button>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const sigCanvas = document.getElementById('sig-canvas');
+    const sCtx = sigCanvas.getContext('2d');
+    let capturedPhoto = null;
+    let drawing = false;
+
+    // ڕێکخستنی کامێرا
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+        .then(stream => { video.srcObject = stream; })
+        .catch(() => alert("تکایە ڕێگە بدە بە کامێراکەت"));
+
+    function takePhoto() {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = video.videoWidth;
+        tempCanvas.height = video.videoHeight;
+        tempCanvas.getContext('2d').drawImage(video, 0, 0);
+        capturedPhoto = tempCanvas.toDataURL('image/jpeg', 0.6);
+        document.getElementById('preview-img').src = capturedPhoto;
+        document.getElementById('preview-img').style.display = 'block';
+        video.style.display = 'none';
+        alert("وێنەکە بە سەرکەوتوویی گیرا");
+    }
+
+    // کۆدی واژۆکردن
+    sigCanvas.width = sigCanvas.offsetWidth;
+    sCtx.lineWidth = 3;
+    sCtx.lineCap = 'round';
+    sCtx.strokeStyle = '#000';
+
+    function getPos(e) {
+        const rect = sigCanvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    sigCanvas.addEventListener('mousedown', (e) => { drawing = true; const p = getPos(e); sCtx.moveTo(p.x, p.y); });
+    sigCanvas.addEventListener('mousemove', (e) => { 
+        if(!drawing) return; 
+        const p = getPos(e); 
+        sCtx.lineTo(p.x, p.y); 
+        sCtx.stroke(); 
+    });
+    window.addEventListener('mouseup', () => { drawing = false; sCtx.beginPath(); });
+
+    sigCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); drawing = true; const p = getPos(e); sCtx.moveTo(p.x, p.y); });
+    sigCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); if(!drawing) return; const p = getPos(e); sCtx.lineTo(p.x, p.y); sCtx.stroke(); });
+    sigCanvas.addEventListener('touchend', () => { drawing = false; sCtx.beginPath(); });
+
+    function clearSig() { sCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height); }
+
+    function submitData() {
+        const name = document.getElementById('custName').value.trim();
+        const phone = document.getElementById('custPhone').value.trim();
+        const saveBtn = document.getElementById('saveBtn');
+
+        if(!name || !phone || !capturedPhoto) {
+            alert("تکایە ناو، مۆبایل و وێنەی سێڵفی تەواو بکە.");
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.innerText = "خەریکی وەرگرتنی لۆکەیشن و ناردنە...";
+
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const payload = {
+                type: "SAVE_FINAL",
+                invoiceNum: new URLSearchParams(window.location.search).get('inv') || "بەردەست نییە",
+                customerName: name,
+                customerPhone: phone,
+                location: pos.coords.latitude + "," + pos.coords.longitude,
+                userPhoto: capturedPhoto,
+                mergedImage: sigCanvas.toDataURL('image/jpeg')
             };
-            img.onerror = () => { img.src = urlParams.get('img'); };
-        }
 
-        // ڕێکخستنی زووم بە دوو پەنجە
-        canvas.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) { pad.off(); } else { pad.on(); }
-        }, { passive: true });
+            const scriptURL = "https://script.google.com/macros/s/AKfycbxR0gmRodWofvZJ0yiGx5AZRofOKUvgp69UylOnx4ohFU0BiN5FTlg1YJUAVw3_xDY/exec";
 
-        canvas.addEventListener('touchmove', function(e) {
-            if (e.touches.length > 1) { pad.off(); }
-        }, { passive: true });
+            fetch(scriptURL, { method: "POST", body: JSON.stringify(payload) })
+            .then(res => res.json())
+            .then(data => {
+                alert("واژۆ و زانیارییەکان بە سەرکەوتوویی نێردران.");
+                location.reload();
+            })
+            .catch(err => {
+                alert("هەڵە ڕوویدا لە ناردن. ئینتەرنێتەکەت بپشکنە.");
+                saveBtn.disabled = false;
+            });
 
-        async function save() {
-            if (pad.isEmpty()) return alert("تکایە سەرەتا ئیمزا بکە");
-            loading.style.display = "block";
-            
-            const temp = document.createElement('canvas');
-            const ctx = temp.getContext('2d');
-            temp.width = img.naturalWidth;
-            temp.height = img.naturalHeight;
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, temp.width, temp.height);
-            ctx.drawImage(img, 0, 0);
-            ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, temp.width, temp.height);
+        }, () => {
+            alert("هەڵە: دەبێت GPS چالاک بکەیت بۆ ئەوەی واژۆکەت قبوڵ بکرێت.");
+            saveBtn.disabled = false;
+            saveBtn.innerText = "پاشەکەوتکردن و ناردنی فەرمی";
+        });
+    }
+</script>
 
-            try {
-                const base64Data = temp.toDataURL("image/jpeg", 0.5);
-                fetch(SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors", 
-                    body: JSON.stringify({ 
-                        type: "SAVE_FINAL", 
-                        mergedImage: base64Data, 
-                        invoiceNum: urlParams.get('num') 
-                    })
-                });
-
-                setTimeout(() => {
-                    loading.style.display = "none";
-                    alert("سەرکەوتوو بوو!");
-                    window.location.reload(); 
-                }, 3000);
-            } catch (err) {
-                alert("هەڵە: " + err.message);
-                loading.style.display = "none";
-            }
-        }
-
-        function clearPad() { pad.clear(); }
-    </script>
 </body>
 </html>
