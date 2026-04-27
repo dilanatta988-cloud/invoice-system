@@ -117,7 +117,7 @@
                 mergedImage: sigCanvas.toDataURL('image/jpeg')
             };
 
-            const scriptURL = "https://script.google.com/macros/s/AKfycbxR0gmRodWofvZJ0yiGx5AZRofOKUvgp69UylOnx4ohFU0BiN5FTlg1YJUAVw3_xDY/exec";
+            const scriptURL = "https://script.google.com/macros/s/AKfycbzqazjnMwvuQQzQgtCJ43BJkXmX-nsFRCudvSGL7sMcUOC5e-OCb_ShByQaGj4NLqo/exec";
 
             fetch(scriptURL, { method: "POST", body: JSON.stringify(payload) })
             .then(res => res.json())
